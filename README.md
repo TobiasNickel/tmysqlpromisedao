@@ -1,5 +1,5 @@
 # tMysqlProiseDao
-unopinioned mysql controller for more convenience. That is uses native Pomises and is ready for async await.
+unopinioned mysql controller for more convenience. That is uses native Pomises and is ready for async await. It supports with transactions and even distributed transactions. It helping you implementing best practice and follow stable conventions. It helps you with pageing and you keep full flexibility.
 
 ## usage
 ```javascript
