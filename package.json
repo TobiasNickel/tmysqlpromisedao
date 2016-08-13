@@ -1,0 +1,29 @@
+{
+  "name": "tmysqlpromisedao",
+  "version": "1.1.11",
+  "description": "handle mysql the direct way, ready for async await",
+  "main": "tMysqlDao.js",
+  "scripts": {
+    "test": "node test.js",
+    "compileTest":"regenerator -r asyncTest.js > asyncTestBuild.js",
+    "asyncTest":"node asyncTestBuild.js",
+    "testAsync":"regenerator -r asyncTest.js > asyncTestBuild.js && node asyncTestBuild.js"
+  },
+  "keywords": [
+    "mysql",
+    "controller",
+    "model",
+    "orm",
+    "dsl",
+    "promise",
+    "tested"
+  ],
+  "author": "Tobias Nickel",
+  "license": "MIT",
+  "dependencies": {
+    "mysql": "^2.11.1"
+  },
+  "devDependencies": {
+    "regenerator": "^0.8.46"
+  }
+}
