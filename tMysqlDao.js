@@ -7,7 +7,7 @@ var extendTransactionConnection = function (connection) {
     if (connection.rollback && !connection._OrgRollback && connection.commit && !connection._OrgCommit && connection.release) {
         connection._OrgRollback = connection.rollback;
         connection.rollback = function (callback) {
-            return new Promise(function(resolve, reject){
+            return new Promise(function (resolve, reject) {
                 connection._OrgRollback(function (err) {
                     if (err) { reject(err); return; }
                     connection.release();
@@ -18,7 +18,7 @@ var extendTransactionConnection = function (connection) {
 
         connection._OrgCommit = connection.commit;
         connection.commit = function (callback) {
-            return new Promise(function(resolve, reject){
+            return new Promise(function (resolve, reject) {
                 connection._OrgCommit(function (err) {
                     if (err) { reject(err); return; }
                     connection.release();
@@ -32,9 +32,9 @@ var extendTransactionConnection = function (connection) {
 /**
  *test if some object can be used to query
  */
-function isConneciton(obj){
-    if(typeof obj !== "object") return false;
-    if(typeof obj.query !== "function") return false;
+function isConneciton(obj) {
+    if (typeof obj !== "object") return false;
+    if (typeof obj.query !== "function") return false;
     return true;
 }
 
@@ -42,7 +42,13 @@ function first(promise) {
     promise.then(function (data) {
         return data[0];
     });
-};
+}
+/**
+ * @param {Array} args
+ */
+function slice(args) {
+    return Array.prototype.slice.apply(args);
+}
 
 module.exports = function (config) {
     var db = {
@@ -63,8 +69,8 @@ module.exports = function (config) {
                     params = [];
                 }
                 if (!isConneciton(connection)) connection = db.pool;
-                if(db.logQueries){
-                    console.log(mysql.format(sql,params));
+                if (db.logQueries) {
+                    console.log(mysql.format(sql, params));
                 }
                 connection.query(sql, params, function (err, data) {
                     if (err) {
@@ -113,30 +119,30 @@ module.exports = function (config) {
             if (isNaN(parseInt(page))) {
                 return db.query(sql, values, connection);
             } else {
-                 return new Promise(function (resolve, reject) {
+                return new Promise(function (resolve, reject) {
                     paging = " LIMIT " + (page * pagesize) + ',' + pagesize;
                     var pages = null;
                     var result = null;
                     db.query(sql + paging, values, connection)
-                    .then(function (res) {
-                        result = res;
-                        done();
-                    }).catch(function (err) {
-                        result = err;
-                        done();
-                    });
+                        .then(function (res) {
+                            result = res;
+                            done();
+                        }).catch(function (err) {
+                            result = err;
+                            done();
+                        });
                     db.query('SELECT count(*) as resultCount ' + sql.slice(sql.toLowerCase().indexOf('from')), values, connection)
-                    .then(function (c) {
-                        var response = c[0] ? c[0] :{resultCount: 0};
-                        pages = {
-                            resultCount: response.resultCount,
-                            pageCount: Math.ceil(response.resultCount / pagesize)
-                        }
-                        done();
-                    }).catch(function (err) {
-                        pages = err;
-                        done();
-                    });
+                        .then(function (c) {
+                            var response = c[0] ? c[0] : { resultCount: 0 };
+                            pages = {
+                                resultCount: response.resultCount,
+                                pageCount: Math.ceil(response.resultCount / pagesize)
+                            }
+                            done();
+                        }).catch(function (err) {
+                            pages = err;
+                            done();
+                        });
                     function done() {
                         if (pages !== null && result !== null) {
                             if (pages instanceof Error) {
@@ -254,7 +260,7 @@ module.exports = function (config) {
                     whereStringBuilder.push('(' + clouseBuilder.join(' AND ') + ')')
                 }
                 sql += whereStringBuilder.join('OR');
-                console.log('remove',sql)
+                console.log('remove', sql)
                 return db.query(sql, values, connection);
             }
         },
@@ -276,10 +282,10 @@ module.exports = function (config) {
 
             var sql = 'INSERT INTO ' + tableName + ' SET ?';
             return db.query(sql, val, connection)
-            .then(function (result) {
-                obj.id = result.insertId;
-                return result.insertId;
-            });
+                .then(function (result) {
+                    obj.id = result.insertId;
+                    return result.insertId;
+                });
         },
 
         /**
@@ -297,22 +303,22 @@ module.exports = function (config) {
                 var errors = [];
                 objs.forEach(function (obj) {
                     db.saveOne(tableName, primaries, obj, connection)
-                    .then(function () {
-                        count++;
-                        if (count === number) {
-                            if (errors.length) {
-                                reject(errors);
-                            } else {
-                                resolve();
+                        .then(function () {
+                            count++;
+                            if (count === number) {
+                                if (errors.length) {
+                                    reject(errors);
+                                } else {
+                                    resolve();
+                                }
                             }
-                        }
-                    }).catch(function (err) {
-                        count++;
-                        errors.push([obj, err]);
-                        if (count === number) {
-                            reject(errors);
-                        }
-                    })
+                        }).catch(function (err) {
+                            count++;
+                            errors.push([obj, err]);
+                            if (count === number) {
+                                reject(errors);
+                            }
+                        })
                 });
             });
         },
@@ -390,27 +396,27 @@ module.exports = function (config) {
                 return db.remove(tableName, IDKeys, obj, connection);
             };
 
-            dao.createTable = function(connection){
+            dao.createTable = function (connection) {
                 var sql = 'CREATE TABLE IF NOT EXISTS ?? (';
                 var params = [tableName];
                 var fieldSQLs = [];
                 var primaries = [];
-                for(var i in dao.fields){
+                for (var i in dao.fields) {
                     var field = dao.fields[i];
                     var fieldSql = '?? ';
                     params.push(i);
                     fieldSql += (field.type || "varchar(255)");
-                    if(field.primary){ primaries.push(i); }
+                    if (field.primary) { primaries.push(i); }
                     fieldSQLs.push(fieldSql);
                 }
                 sql += fieldSQLs.join(',')
-                if(primaries.length){
-                    sql+= ',PRIMARY KEY('+primaries.join(',')+')';
+                if (primaries.length) {
+                    sql += ',PRIMARY KEY(' + primaries.join(',') + ')';
                 }
                 sql += ')';
-                return db.query(sql,params,connection);
+                return db.query(sql, params, connection);
             };
-            dao.dropTable = function(conneciton){
+            dao.dropTable = function (conneciton) {
                 return db.query('drop table ??', [tableName], conneciton);
             };
             for (var i in dao.fields) {
@@ -443,6 +449,11 @@ module.exports = function (config) {
                     prepareConditionalMethod(db, dao, tableName, name, dao.conditionals[name]);
                 }
             }
+            if (dao.queries) {
+                for (var name in dao.queries) {
+                    prepareQueryMethod(db, dao, tableName, name, dao.queries[name]);
+                }
+            }
             return dao;
         }
     };
@@ -457,22 +468,44 @@ function prepareConditionalMethod(db, dao, tableName, name, definition) {
     var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
     var fetchName = definition.fatchName || (name);
 
-    var condition = definition.condition ? ' ('+definition.condition+')' : '1';
+    var condition = definition.condition ? ' (' + definition.condition + ')' : '1';
 
-    dao['get' + addName] = function ( connection) {
+    dao['get' + addName] = function (connection) {
         var params = [];
-        arguments = Array.prototype.slice.apply(arguments);
+        arguments = slice(arguments);
         var arg = arguments.shift();
-        while(arg != undefined && !isConneciton(arg)){
+        while (arg != undefined && !isConneciton(arg)) {
             params.push(arg);
             arg = arguments.shift();
         }
         connection = arg;
         var objsByKey = {};
-        var sql = "SELECT * FROM " + tableName + " WHERE " + condition ;
+        var sql = "SELECT * FROM " + tableName + " WHERE " + condition;
         return db.query(sql, params, connection)
             .then(function (list) {
-                if(definition.multiple) return list;
+                if (definition.multiple) return list;
+                return list[0];
+            });
+    }
+}
+
+/**
+ * extent the crontroller with methods to fetch related data.
+ */
+function prepareQueryMethod(db, dao, tableName, name, sql) {
+    dao[name] = function () {
+        var params = [];
+        arguments = slice(arguments);
+        var arg = arguments.shift();
+        while (arg != undefined && !isConneciton(arg)) {
+            params.push(arg);
+            arg = arguments.shift();
+        }
+        var connection = arg;
+        var objsByKey = {};
+        return db.query(sql, params, connection)
+            .then(function (list) {
+                if (definition.multiple) return list;
                 return list[0];
             });
     }
@@ -485,20 +518,20 @@ function prepareFetchMethod(db, dao, tableName, name, definition) {
     var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
     var fetchName = definition.fatchName || (name);
 
-    var condition = definition.condition ? 'AND ('+definition.condition+')' : '';
+    var condition = definition.condition ? 'AND (' + definition.condition + ')' : '';
 
     dao['fetch' + addName] = function (objs, connection) {
         if (!Array.isArray(objs)) { objs = [objs]; }
-        if(!objs.length){
-            return new Promise(function(resolve,reject){
-                resolve( [] );
+        if (!objs.length) {
+            return new Promise(function (resolve, reject) {
+                resolve([]);
             });
         }
         var params = [];
-        arguments = Array.prototype.slice.apply(arguments);
+        arguments = slice(arguments);
         arguments.shift();//remove objs from arguments;
         var arg = arguments.shift();
-        while(arg != undefined && !isConneciton(arg)){
+        while (arg != undefined && !isConneciton(arg)) {
             params.push(arg);
             arg = arguments.shift();
         }
@@ -517,7 +550,7 @@ function prepareFetchMethod(db, dao, tableName, name, definition) {
             objsByKey[key].push(obj);
             return key;
         });
-        return db.query( "SELECT * FROM " + definition.mapTo.tableName + " WHERE " + (definition.mapTo.foreignKey || 'id') + ' IN (?)' + condition, [keys], connection)
+        return db.query("SELECT * FROM " + definition.mapTo.tableName + " WHERE " + (definition.mapTo.foreignKey || 'id') + ' IN (?)' + condition, [keys], connection)
             .then(function (list) {
                 list.forEach(function (item) {
                     var key = item[definition.mapTo.foreignKey]
@@ -531,7 +564,7 @@ function prepareFetchMethod(db, dao, tableName, name, definition) {
                         }
                     });
                 });
-                return list ;
+                return list;
             });
     }
 }

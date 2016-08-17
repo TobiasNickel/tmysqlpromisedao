@@ -23,6 +23,9 @@ var userDao = db.prepareDao({
     },
     conditionals: {
         new: { condition:'TO_DAYS(registered) > (TO_DAYS(NOW())-10)', multiple: true } // to provide a getNew method that return the users registered in the last 10 days
+    },
+    queries:{
+        withoutPicture: 'SELECT * FROM images where id NOT IN (SELECT distinct owner FROM images)'
     }
 });
 var imageDao = db.prepareDao({

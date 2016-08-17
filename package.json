@@ -1,6 +1,6 @@
 {
   "name": "tmysqlpromisedao",
-  "version": "1.1.11",
+  "version": "1.1.13",
   "description": "handle mysql the direct way, ready for async await",
   "main": "tMysqlDao.js",
   "scripts": {
@@ -8,6 +8,10 @@
     "compileTest":"regenerator -r asyncTest.js > asyncTestBuild.js",
     "asyncTest":"node asyncTestBuild.js",
     "testAsync":"regenerator -r asyncTest.js > asyncTestBuild.js && node asyncTestBuild.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TobiasNickel/tmysqlpromisedao.git"
   },
   "keywords": [
     "mysql",
@@ -25,5 +29,9 @@
   },
   "devDependencies": {
     "regenerator": "^0.8.46"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/TobiasNickel/tXml/issues"
+  },
+  "homepage": "https://github.com/TobiasNickel/tXml#readme"
 }
