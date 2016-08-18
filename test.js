@@ -25,7 +25,7 @@ var userDao = db.prepareDao({
         new: { condition:'TO_DAYS(registered) > (TO_DAYS(NOW())-10)', multiple: true } // to provide a getNew method that return the users registered in the last 10 days
     },
     queries:{
-        withoutPicture: 'SELECT * FROM images where id NOT IN (SELECT distinct owner FROM images)'
+        withoutPicture: 'SELECT * FROM images WHERE id NOT IN (SELECT distinct owner FROM images)'
     }
 });
 var imageDao = db.prepareDao({
@@ -163,6 +163,12 @@ userDao.createTable()
 })
 .then(function(newImages){
     return imageDao.findOneWhere({name:'superman.jpg'});
+})
+.then(function(newImages){
+    return userDao.withoutPicture();
+})
+.then(function(newImages){
+    return userDao.withoutPicture(0,2);
 })
 .then(function(newImages){
     return userDao.dropTable();
