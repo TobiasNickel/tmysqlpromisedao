@@ -114,11 +114,5 @@ async function test(){
         console.log('failed:', err,err.stack);
     }
 }
-test().then(function(){
-    console.log("DONE");
-    process.exit();
-}).catch(function(err){
-    console.log("error:",err);
-    process.exit();
-})
+test();
 

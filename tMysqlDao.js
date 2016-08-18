@@ -34,8 +34,8 @@ var extendTransactionConnection = function (connection) {
  *test if some object can be used to query
  */
 function isConneciton(obj) {
-    if (typeof obj !== "object") return false;
-    if (typeof obj.query !== "function") return false;
+    if (typeof obj !== 'object') return false;
+    if (typeof obj.query !== 'function') return false;
     return true;
 }
 
@@ -121,7 +121,7 @@ module.exports = function (config) {
                 return db.query(sql, values, connection);
             } else {
                 return new Promise(function (resolve, reject) {
-                    paging = " LIMIT " + (page * pagesize) + ',' + pagesize;
+                    paging = ' LIMIT ' + (page * pagesize) + ',' + pagesize;
                     var pages = null;
                     var result = null;
                     db.query(sql + paging, values, connection)
@@ -239,7 +239,7 @@ module.exports = function (config) {
             if (idKey.length === 1) {
                 var key = idKey[0];
                 var ids = objs.map(function (obj) {
-                    if (typeof obj == "object") {
+                    if (typeof obj == 'object') {
                         return obj[key];
                     } else {
                         return obj;
@@ -383,7 +383,7 @@ module.exports = function (config) {
             };
 
             dao.getAll = function (page, pageSize, connection) {
-                return db.selectPaged("SELECT * FROM ??", [tableName], page, pageSize, connection);
+                return db.selectPaged('SELECT * FROM ??', [tableName], page, pageSize, connection);
             };
 
             dao.findWhere = function (obj, page, pageSize, connection) {
@@ -406,7 +406,7 @@ module.exports = function (config) {
                     var field = dao.fields[i];
                     var fieldSql = '?? ';
                     params.push(i);
-                    fieldSql += (field.type || "varchar(255)");
+                    fieldSql += (field.type || 'varchar(255)');
                     if (field.primary) { primaries.push(i); }
                     fieldSQLs.push(fieldSql);
                 }
@@ -481,7 +481,7 @@ function prepareConditionalMethod(db, dao, tableName, name, definition) {
         }
         connection = arg;
         var objsByKey = {};
-        var sql = "SELECT * FROM " + tableName + " WHERE " + condition;
+        var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + condition;
         return db.query(sql, params, connection)
             .then(function (list) {
                 if (definition.multiple) return list;
@@ -498,25 +498,25 @@ function prepareQueryMethod(db, dao, tableName, name, sql) {
     dao[name] = function () {
         var params = [];
         var arg = slice(arguments);
-        var params = arg.splice(0,parameterCount);
-        if(params.length!=parameterCount)throw new Error('not enough parameter for '+name+'');
-        if(isConneciton(params[params.length-1]))throw new Error('not enough parameter for '+name+'');
+        var params = arg.splice(0, parameterCount);
+        if (params.length != parameterCount) throw new Error('not enough parameter for ' + name + '');
+        if (isConneciton(params[params.length - 1])) throw new Error('not enough parameter for ' + name + '');
 
         var connection;
-        if(arg.length){
-            if(isConneciton(arg[arg.length-1])){
+        if (arg.length) {
+            if (isConneciton(arg[arg.length - 1])) {
                 connection = arg.pop();
             }
         }
-        if(!arg.length){
+        if (!arg.length) {
             return db.query(sql, params, connection);
         }
-        if(arg.length > 2)throw new Error('to many params for the query '+name+':'+sql)
-        if(typeof arg[0]!=='undefined' && isNaN(parseInt(arg[0]))) throw new Error('pagingParameter(page) need to be a number not:'+arg[0]+' for '+name+':'+sql);
-        if(typeof arg[1]!=='undefined' && isNaN(parseInt(arg[1]))) throw new Error('pagingParameter(pagesize) need to be a number for '+name+':'+sql);
-        if(arg.length === 1){
+        if (arg.length > 2) throw new Error('to many params for the query ' + name + ':' + sql)
+        if (typeof arg[0] !== 'undefined' && isNaN(parseInt(arg[0]))) throw new Error('pagingParameter(page) need to be a number not:' + arg[0] + ' for ' + name + ':' + sql);
+        if (typeof arg[1] !== 'undefined' && isNaN(parseInt(arg[1]))) throw new Error('pagingParameter(pagesize) need to be a number for ' + name + ':' + sql);
+        if (arg.length === 1) {
             return db.selectPaged(sql, params, arg[0], connection);
-        }else{
+        } else {
             return db.selectPaged(sql, params, arg[0], arg[1], connection);
         }
     }
@@ -561,7 +561,7 @@ function prepareFetchMethod(db, dao, tableName, name, definition) {
             objsByKey[key].push(obj);
             return key;
         });
-        return db.query("SELECT * FROM " + definition.mapTo.tableName + " WHERE " + (definition.mapTo.foreignKey || 'id') + ' IN (?)' + condition, [keys], connection)
+        return db.query('SELECT * FROM ' + definition.mapTo.tableName + ' WHERE ' + (definition.mapTo.foreignKey || 'id') + ' IN (?)' + condition, [keys], connection)
             .then(function (list) {
                 list.forEach(function (item) {
                     var key = item[definition.mapTo.foreignKey]

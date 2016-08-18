@@ -25,7 +25,7 @@ var userDao = db.prepareDao({
         new: { condition:'TO_DAYS(registered) > (TO_DAYS(NOW())-10)', multiple: true } // to provide a getNew method that return the users registered in the last 10 days
     },
     queries:{
-        withoutPicture: 'SELECT * FROM images WHERE id NOT IN (SELECT distinct owner FROM images)'
+        withoutPicture: 'SELECT * FROM users WHERE id NOT IN (SELECT distinct owner FROM images)'
     }
 });
 var imageDao = db.prepareDao({
@@ -72,7 +72,7 @@ userDao.createTable()
 })
 .then(function(){
     console.log('createTable: DONE')
-    return userDao.insert({name:'tobias',mail:'business@tnickel.de',password:"kvckxchlksjfhliu",registered:1});
+    return userDao.insert({name:'tobias',mail:'business@tnickel.de',password:'kvckxchlksjfhliu',registered:1});
 })
 .then(function(){
     console.log('insert object: DONE')
