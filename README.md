@@ -1,6 +1,8 @@
 # tMysqlProiseDao
 
-unopinioned, high quality mysql controller for more convenience. That is uses native Pomises 
+unopinioned, high quality, future-ready mysql controller for more convenience, code reuse,
+clean APIs, flexibility, reasonable conventions, maintainability, helping you to implement
+an architecture, that will support you and your team. That uses native Pomises 
 and is ready for async await. It supports with transactions and even distributed 
 transactions with other resources. It helping you implementing best practice and follow stable conventions.
 It helps you with pageing and you keep full flexibility.
@@ -140,7 +142,7 @@ as followed:
 
 ```javascript
 var connectonConfig = require('./mysqlConfig.json');
-module.exports = require('tmysqlcontroller')(connectionConfig);
+var db = module.exports = require('tmysqlcontroller')(connectionConfig);
 ```
 You can already use this module to query the database, handle transactions, fetch and
 manipulate data on the database. But the better way is to provide dao-objects
@@ -240,7 +242,40 @@ userDao.getAll(0,10)
     });
 ```
 
-## Function Reference
+# Promise
+
+By default tmysqlpromisedao is using native promises in nodejs. If you want to use an other promise library,
+you can exchange the promiseFactory on the db. Following an example with bluebird.
+```javascript
+var promise = require('bluebird');
+var connectonConfig = require('./mysqlConfig.json');
+var db = module.exports = require('tmysqlcontroller')(connectionConfig);
+db.newPromise = function(handler){
+    return new promise(handler);
+};
+```
+And next an example with Q. For demonstration it uses Q.defer(). 
+```javascript
+var Q = require('q');
+var connectonConfig = require('./mysqlConfig.json');
+var db = module.exports = require('tmysqlcontroller')(connectionConfig);
+db.newPromise = function(handler){
+    var deferred = Q.defer();
+    function resolve (res){deferred.resolve(res);}
+    function reject (err){deferred.reject(err);}
+    process.nextTick(function(){
+        try{
+            handler(resolve, reject);
+        }catch(err){
+            deferred.reject(err);
+        }
+    });
+    return deferred.promise;
+};
+```
+
+
+# Function Reference
 For now check out the source under [Github/tobiasnickel/tmysqlpromisedao](https://github.com/TobiasNickel/tmysqlpromisedao). The code is not to long and documented
 To handle the more comples SQL you might want to checkout [tsqlreader](https://www.npmjs.com/package/tsqlreader).
 

@@ -62,7 +62,17 @@ db.logQueries = false;
 console.log('prepare dao: DONE');
 var users = null;
 var objs = null;
-userDao.createTable()
+
+likeDao.dropTable()
+.then(function(newImages){
+    return userDao.dropTable();
+})
+.then(function(images){
+    return imageDao.dropTable();
+})
+.then(function(images){
+    return userDao.createTable();
+})
 .then(function(){
     console.log('createTable: DONE')
     return imageDao.createTable();

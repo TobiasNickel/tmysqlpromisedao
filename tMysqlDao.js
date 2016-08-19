@@ -1,55 +1,11 @@
 var mysql = require('mysql');
-var countMysqlParameter = require('./countMysqlParameter');
-
-/**
- * makes sure, that poolconnections get released when they got committed or rollback
- */
-var extendTransactionConnection = function (connection) {
-    if (connection.rollback && !connection._OrgRollback && connection.commit && !connection._OrgCommit && connection.release) {
-        connection._OrgRollback = connection.rollback;
-        connection.rollback = function (callback) {
-            return new Promise(function (resolve, reject) {
-                connection._OrgRollback(function (err) {
-                    if (err) { reject(err); return; }
-                    connection.release();
-                    resolve(null);
-                });
-            });
-        };
-
-        connection._OrgCommit = connection.commit;
-        connection.commit = function (callback) {
-            return new Promise(function (resolve, reject) {
-                connection._OrgCommit(function (err) {
-                    if (err) { reject(err); return; }
-                    connection.release();
-                    resolve(null);
-                });
-            });
-        };
-    }
-    return connection;
-};
-/**
- *test if some object can be used to query
- */
-function isConneciton(obj) {
-    if (typeof obj !== 'object') return false;
-    if (typeof obj.query !== 'function') return false;
-    return true;
-}
-
-function first(promise) {
-    promise.then(function (data) {
-        return data[0];
-    });
-}
-/**
- * @param {Array} args
- */
-function slice(args) {
-    return Array.prototype.slice.apply(args);
-}
+var newPromise = require('./lib/newPromise');
+var prepareFetchMethod = require('./lib/prepareFetchMethod');
+var prepareQueryMethod = require('./lib/prepareQueryMethod');
+var slice = require('./lib/slice');
+var isConnection = require('./lib/isConnection');
+var prepareConditionalMethod = require('./lib/prepareConditionalMethod');
+var first = require('./lib/promiseFirst');
 
 module.exports = function (config) {
     var db = {
@@ -64,12 +20,12 @@ module.exports = function (config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         query(sql, params, connection) {
-            return (new Promise(function (resolve, reject) {
-                if (isConneciton(params)) {
+            return (db.newPromise(function (resolve, reject) {
+                if (isConnection(params)) {
                     connection = params;
                     params = [];
                 }
-                if (!isConneciton(connection)) connection = db.pool;
+                if (!isConnection(connection)) connection = db.pool;
                 if (db.logQueries) {
                     console.log(mysql.format(sql, params));
                 }
@@ -82,11 +38,17 @@ module.exports = function (config) {
                 });
             }));
         },
+
+        /**
+         * promise factory, that can be replaced, to use different promise-libraries.
+         */
+        newPromise: newPromise,
+
         /**
          * get a connectio where the transaction is started.
          */
         beginTransaction() {
-            return new Promise(function (resolve, reject) {
+            return db.newPromise(function (resolve, reject) {
                 db.pool.getConnection(function (err, connection) {
                     if (err) { reject(err); return }
                     connection.beginTransaction(function (err) {
@@ -109,7 +71,7 @@ module.exports = function (config) {
          */
         selectPaged: function (sql, values, page, pagesize, connection) {
             var paging = '';
-            if (isConneciton(page)) {
+            if (isConnection(page)) {
                 connection = page;
                 page = null;
                 pagesize = null;
@@ -120,7 +82,7 @@ module.exports = function (config) {
             if (isNaN(parseInt(page))) {
                 return db.query(sql, values, connection);
             } else {
-                return new Promise(function (resolve, reject) {
+                return db.newPromise(function (resolve, reject) {
                     paging = ' LIMIT ' + (page * pagesize) + ',' + pagesize;
                     var pages = null;
                     var result = null;
@@ -299,7 +261,7 @@ module.exports = function (config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         save: function (tableName, primaries, objs, connection) {
-            return new Promise(function (resolve, reject) {
+            return db.newPromise(function (resolve, reject) {
                 if (!Array.isArray(objs)) { objs = [objs]; }
                 var number = objs.length;
                 var count = 0;
@@ -420,7 +382,7 @@ module.exports = function (config) {
                 return db.query(sql, params, connection);
             };
             dao.dropTable = function (conneciton) {
-                return db.query('drop table ??', [tableName], conneciton);
+                return db.query('DROP TABLE IF EXISTS ??', [tableName], conneciton);
             };
             for (var i in dao.fields) {
                 (function (name, definition) {
@@ -460,124 +422,35 @@ module.exports = function (config) {
             return dao;
         }
     };
+    /**
+     * makes sure, that poolconnections get released when they got committed or rollback
+     */
+    var extendTransactionConnection = function (connection) {
+        if (connection.rollback && !connection._OrgRollback && connection.commit && !connection._OrgCommit && connection.release) {
+            connection._OrgRollback = connection.rollback;
+            connection.rollback = function (callback) {
+                return db.newPromise(function (resolve, reject) {
+                    connection._OrgRollback(function (err) {
+                        if (err) { reject(err); return; }
+                        connection.release();
+                        resolve(null);
+                    });
+                });
+            };
+
+            connection._OrgCommit = connection.commit;
+            connection.commit = function (callback) {
+                return db.newPromise(function (resolve, reject) {
+                    connection._OrgCommit(function (err) {
+                        if (err) { reject(err); return; }
+                        connection.release();
+                        resolve(null);
+                    });
+                });
+            };
+        }
+        return connection;
+    };
     return db;
 }
 
-
-/**
- * extent the crontroller with methods to fetch related data.
- */
-function prepareConditionalMethod(db, dao, tableName, name, definition) {
-    var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
-    var fetchName = definition.fatchName || (name);
-
-    var condition = definition.condition ? ' (' + definition.condition + ')' : '1';
-
-    dao['get' + addName] = function (connection) {
-        var params = [];
-        arguments = slice(arguments);
-        var arg = arguments.shift();
-        while (arg != undefined && !isConneciton(arg)) {
-            params.push(arg);
-            arg = arguments.shift();
-        }
-        connection = arg;
-        var objsByKey = {};
-        var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + condition;
-        return db.query(sql, params, connection)
-            .then(function (list) {
-                if (definition.multiple) return list;
-                return list[0];
-            });
-    }
-}
-
-/**
- * extent the crontroller with methods to fetch related data.
- */
-function prepareQueryMethod(db, dao, tableName, name, sql) {
-    var parameterCount = countMysqlParameter(sql);
-    dao[name] = function () {
-        var params = [];
-        var arg = slice(arguments);
-        var params = arg.splice(0, parameterCount);
-        if (params.length != parameterCount) throw new Error('not enough parameter for ' + name + '');
-        if (isConneciton(params[params.length - 1])) throw new Error('not enough parameter for ' + name + '');
-
-        var connection;
-        if (arg.length) {
-            if (isConneciton(arg[arg.length - 1])) {
-                connection = arg.pop();
-            }
-        }
-        if (!arg.length) {
-            return db.query(sql, params, connection);
-        }
-        if (arg.length > 2) throw new Error('to many params for the query ' + name + ':' + sql)
-        if (typeof arg[0] !== 'undefined' && isNaN(parseInt(arg[0]))) throw new Error('pagingParameter(page) need to be a number not:' + arg[0] + ' for ' + name + ':' + sql);
-        if (typeof arg[1] !== 'undefined' && isNaN(parseInt(arg[1]))) throw new Error('pagingParameter(pagesize) need to be a number for ' + name + ':' + sql);
-        if (arg.length === 1) {
-            return db.selectPaged(sql, params, arg[0], connection);
-        } else {
-            return db.selectPaged(sql, params, arg[0], arg[1], connection);
-        }
-    }
-}
-
-/**
- * extent the crontroller with methods to fetch related data.
- */
-function prepareFetchMethod(db, dao, tableName, name, definition) {
-    var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
-    var fetchName = definition.fatchName || (name);
-
-    var condition = definition.condition ? 'AND (' + definition.condition + ')' : '';
-
-    dao['fetch' + addName] = function (objs, connection) {
-        if (!Array.isArray(objs)) { objs = [objs]; }
-        if (!objs.length) {
-            return new Promise(function (resolve, reject) {
-                resolve([]);
-            });
-        }
-        var params = [];
-        arguments = slice(arguments);
-        arguments.shift();//remove objs from arguments;
-        var arg = arguments.shift();
-        while (arg != undefined && !isConneciton(arg)) {
-            params.push(arg);
-            arg = arguments.shift();
-        }
-        connection = arg;
-        var objsByKey = {};
-        var keys = objs.map(function (obj) {
-            var key;
-            if (typeof obj == 'string') {
-                key = obj;
-                obj = {};
-                obj[name] = key;
-            } else {
-                key = obj[definition.mapTo.localField || name];
-            }
-            if (!objsByKey[key]) objsByKey[key] = [];
-            objsByKey[key].push(obj);
-            return key;
-        });
-        return db.query('SELECT * FROM ' + definition.mapTo.tableName + ' WHERE ' + (definition.mapTo.foreignKey || 'id') + ' IN (?)' + condition, [keys], connection)
-            .then(function (list) {
-                list.forEach(function (item) {
-                    var key = item[definition.mapTo.foreignKey]
-                    var objs = objsByKey[key];
-                    objs.forEach(function (obj) {
-                        if (definition.mapTo.multiple) {
-                            if (!obj[fetchName]) obj[fetchName] = [];
-                            obj[fetchName].push(item);
-                        } else {
-                            obj[fetchName] = item;
-                        }
-                    });
-                });
-                return list;
-            });
-    }
-}
