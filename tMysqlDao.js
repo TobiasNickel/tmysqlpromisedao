@@ -25,7 +25,7 @@ var extendTransactionConnection = function (connection) {
                     connection.release();
                     resolve(null);
                 });
-            })
+            });
         };
     }
     return connection;
@@ -151,7 +151,9 @@ module.exports = function (config) {
                             } else if (result instanceof Error) {
                                 reject(result);
                             } else {
-                                resolve({ result: result, counts: pages });
+                                result.pageCount = pages.pageCount;
+                                result.resultCount;
+                                resolve(result);
                             }
                         }
                     }
