@@ -20,7 +20,7 @@ module.exports = function (config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         query(sql, params, connection) {
-            return (db.newPromise(function (resolve, reject) {
+            return db.newPromise(function (resolve, reject) {
                 if (isConnection(params)) {
                     connection = params;
                     params = [];
@@ -36,13 +36,15 @@ module.exports = function (config) {
                         resolve(data);
                     }
                 });
-            }));
+            });
         },
 
         /**
          * promise factory, that can be replaced, to use different promise-libraries.
          */
-        newPromise: newPromise,
+        newPromise: newPromise || config.newPromise,
+
+        defaultPrimaryName: condig.defaultPrimary || 'id',
 
         /**
          * get a connectio where the transaction is started.
@@ -69,7 +71,7 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        selectPaged: function (sql, values, page, pagesize, connection) {
+        selectPaged: function (sql, params, page, pagesize, connection) {
             var paging = '';
             if (isConnection(page)) {
                 connection = page;
@@ -80,13 +82,13 @@ module.exports = function (config) {
                 pagesize = db.defaultPagesize;
             }
             if (isNaN(parseInt(page))) {
-                return db.query(sql, values, connection);
+                return db.query(sql, params, connection);
             } else {
                 return db.newPromise(function (resolve, reject) {
                     paging = ' LIMIT ' + (page * pagesize) + ',' + pagesize;
                     var pages = null;
                     var result = null;
-                    db.query(sql + paging, values, connection)
+                    db.query(sql + paging, params, connection)
                         .then(function (res) {
                             result = res;
                             done();
@@ -94,7 +96,7 @@ module.exports = function (config) {
                             result = err;
                             done();
                         });
-                    db.query('SELECT count(*) as resultCount ' + sql.slice(sql.toLowerCase().indexOf('from')), values, connection)
+                    db.query('SELECT count(*) as resultCount ' + sql.slice(sql.toLowerCase().indexOf('from')), params, connection)
                         .then(function (c) {
                             var response = c[0] ? c[0] : { resultCount: 0 };
                             pages = {
@@ -134,7 +136,7 @@ module.exports = function (config) {
          */
         getBy: function (tableName, fieldName, value, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + fieldName + ' IN (?)';
-            return db.selectPaged(sql, [value], page, pagesize, connection);
+            return db.selectPaged(sql, value, page, pagesize, connection);
         },
 
         /**
@@ -147,7 +149,7 @@ module.exports = function (config) {
          */
         getOneBy: function (tableName, fieldName, value, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + fieldName + ' IN (?) LIMIT 0, 1;';
-            return first(db.query(sql, [value], connection));
+            return first(db.query(sql, value, connection));
         },
 
         /**
@@ -159,7 +161,7 @@ module.exports = function (config) {
          */
         findWhere: function (tableName, obj, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
-            var where = '1 '
+            var where = '1 ';
             var values = [];
             for (var i in obj) {
                 where += ' AND ?? = ?';
@@ -178,14 +180,14 @@ module.exports = function (config) {
          */
         findOneWhere: function (tableName, obj, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
-            var where = '1 '
+            var where = '1 ';
             var values = [];
             for (var i in obj) {
                 where += ' AND ?? = ?';
                 values.push(i);
                 values.push(obj[i]);
             }
-            var limit = ' LIMIT 0,1;'
+            var limit = ' LIMIT 0,1;';
             return first(db.query(sql + where + limit, values, connection));
         },
 
@@ -225,7 +227,6 @@ module.exports = function (config) {
                     whereStringBuilder.push('(' + clouseBuilder.join(' AND ') + ')')
                 }
                 sql += whereStringBuilder.join('OR');
-                console.log('remove', sql)
                 return db.query(sql, values, connection);
             }
         },
@@ -277,7 +278,8 @@ module.exports = function (config) {
                                     resolve();
                                 }
                             }
-                        }).catch(function (err) {
+                        })
+                        .catch(function (err) {
                             count++;
                             errors.push([obj, err]);
                             if (count === number) {
@@ -296,11 +298,11 @@ module.exports = function (config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         saveOne: function (tableName, primaries, keys, connection) {
-            // primaries is optional parameter, default is 'id'
+            // primaries is optional parameter, default is db.defaultPrimaryName
             if (!Array.isArray(primaries) && typeof primaries !== 'string') {
                 connection = keys;
                 keys = primaries;
-                primaries = ['id'];
+                primaries = [db.defaultPrimaryName];
             }
             // primaries can be one or more Keys
             if (!Array.isArray(primaries)) primaries = [primaries];
@@ -322,7 +324,6 @@ module.exports = function (config) {
                 params.push(primary);
                 params.push(keys[primary]);
             });
-            console.log(sql)
             return db.query(sql + ';', params, connection);
         },
 
@@ -387,7 +388,7 @@ module.exports = function (config) {
             };
 
             var fieldNames = Object.keys(dao.fields);
-            fieldNames.forEach(function(name){
+            fieldNames.forEach(function (name) {
                 var definition = dao.fields[name];
                 var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
 
@@ -407,7 +408,7 @@ module.exports = function (config) {
 
                 if (definition.primary) { IDKeys.push(name); }
             });
-            if (!IDKeys.length) IDKeys.push('id');
+            if (!IDKeys.length) IDKeys.push(db.defaultPrimaryName);
             if (dao.has) {
                 for (var name in dao.has) {
                     prepareFetchMethod(db, dao, tableName, name, { mapTo: dao.has[name] });
