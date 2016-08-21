@@ -338,7 +338,7 @@ module.exports = function (config) {
 
             dao.insert = function (obj, connection) {
                 return db.insert(tableName, obj, connection);
-            }
+            };
             dao.save = function (objs, connection) {
                 return db.save(tableName, IDKeys, objs, connection);
             };
@@ -381,28 +381,32 @@ module.exports = function (config) {
                 sql += ')';
                 return db.query(sql, params, connection);
             };
+
             dao.dropTable = function (conneciton) {
                 return db.query('DROP TABLE IF EXISTS ??', [tableName], conneciton);
             };
-            for (var i in dao.fields) {
-                (function (name, definition) {
-                    var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
 
-                    dao['getBy' + addName] = function (value, page, pageSize, connection) {
-                        return db.getBy(tableName, name, value, page, pageSize, connection);
-                    };
+            var fieldNames = Object.keys(dao.fields);
+            fieldNames.forEach(function(name){
+                var definition = dao.fields[name];
+                var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
 
-                    dao['getOneBy' + addName] = function (value, connection) {
-                        db.getOneBy(tableName, name, value, connection);
-                    };
+                dao['getBy' + addName] = function (value, page, pageSize, connection) {
+                    return db.getBy(tableName, name, value, page, pageSize, connection);
+                };
 
-                    dao['removeBy' + addName] = function (value, connection) {
-                        db.remove(tableName, name, value, connection);
-                    };
-                    prepareFetchMethod(db, dao, tableName, name, definition);
-                    if (definition.primary) { IDKeys.push(name); }
-                })(i, dao.fields[i]);
-            }
+                dao['getOneBy' + addName] = function (value, connection) {
+                    return db.getOneBy(tableName, name, value, connection);
+                };
+
+                dao['removeBy' + addName] = function (value, connection) {
+                    return db.remove(tableName, name, value, connection);
+                };
+
+                prepareFetchMethod(db, dao, tableName, name, definition);
+
+                if (definition.primary) { IDKeys.push(name); }
+            });
             if (!IDKeys.length) IDKeys.push('id');
             if (dao.has) {
                 for (var name in dao.has) {

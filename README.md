@@ -229,7 +229,7 @@ userDao.increaseById = function(id, amount, conneciton){
 You see, simple pass the connection into an other transaction supporting method.
 
 
-## Paging
+# Paging
 
 The base of the pageing is db.selectPaged(). witch is the query method with two additional optional parameter. page and pageSize before the optional connection. It will execute the query using db.query with a sqlString extended by a limit clouse. It will also execute the query with counting the results, an object with the result and the counts.
 
