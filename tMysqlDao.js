@@ -2,7 +2,6 @@ var mysql = require('mysql');
 var newPromise = require('./lib/newPromise');
 var prepareFetchMethod = require('./lib/prepareFetchMethod');
 var prepareQueryMethod = require('./lib/prepareQueryMethod');
-var slice = require('./lib/slice');
 var isConnection = require('./lib/isConnection');
 var prepareConditionalMethod = require('./lib/prepareConditionalMethod');
 var first = require('./lib/promiseFirst');
@@ -44,7 +43,11 @@ module.exports = function (config) {
          */
         newPromise: newPromise || config.newPromise,
 
-        defaultPrimaryName: condig.defaultPrimary || 'id',
+        /**
+         * When defining your database schema, good developer follow some naming convention.
+         * One decision to a namingconvention is having consistent names for standard Id keys.
+         */
+        defaultPrimaryName: config.defaultPrimary || 'id',
 
         /**
          * get a connectio where the transaction is started.
@@ -121,7 +124,6 @@ module.exports = function (config) {
                             }
                         }
                     }
-
                 });
             }
         },
@@ -340,9 +342,11 @@ module.exports = function (config) {
             dao.insert = function (obj, connection) {
                 return db.insert(tableName, obj, connection);
             };
+
             dao.save = function (objs, connection) {
                 return db.save(tableName, IDKeys, objs, connection);
             };
+
             dao.saveOne = function (obj, connection) {
                 return db.saveOne(tableName, IDKeys, obj, connection);
             };
@@ -354,6 +358,7 @@ module.exports = function (config) {
             dao.findWhere = function (obj, page, pageSize, connection) {
                 return db.findWhere(tableName, obj, page, pageSize, connection);
             };
+            
             dao.findOneWhere = function (obj, connection) {
                 return db.findOneWhere(tableName, obj, connection);
             };

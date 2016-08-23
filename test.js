@@ -53,7 +53,7 @@ var likeDao = db.prepareDao({
         time: {type: 'datetime'}
     },
     conditionals:{
-        new:{ condition:'TO_DAYS(uploadTime) > (TO_DAYS(NOW())-10)'} // to provide a getNew method that return the users registered in the last 10 days
+        new:{ condition:'TO_DAYS(time) > (TO_DAYS(NOW())-10)'} // to provide a getNew method that return the users registered in the last 10 days
     }
 });
 
@@ -130,12 +130,13 @@ likeDao.dropTable()
     return userDao.fetchImages([]);
 })
 .then(function(){
+    
     console.log('get all object: DONE');
-    return imageDao.getNewest('blabla','soso');
+    return imageDao.getNewest();
 })
 .then(function(){
     console.log('get all object: DONE');
-    return imageDao.getNew('blabla','soso');
+    return imageDao.getNew();
 })
 .then(function(newImages){
     console.log('load conditional Images: DONE',newImages.length == 1);
