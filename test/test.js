@@ -1,4 +1,4 @@
-var tmysqldao = require('./tMysqlDao');
+var tmysqldao = require('../tMysqlDao');
 
 var db = tmysqldao({
     connectionLimit: 5,
@@ -25,7 +25,8 @@ var userDao = db.prepareDao({
         new: { condition:'TO_DAYS(registered) > (TO_DAYS(NOW())-10)', multiple: true } // to provide a getNew method that return the users registered in the last 10 days
     },
     queries:{
-        withoutPicture: 'SELECT * FROM users WHERE id NOT IN (SELECT distinct owner FROM images)'
+        withoutPicture: 'SELECT * FROM users WHERE id NOT IN (SELECT distinct owner FROM images)',
+        byPassword: 'SELECT * FROM users WHERE password = ?'
     }
 });
 var imageDao = db.prepareDao({
@@ -182,16 +183,28 @@ likeDao.dropTable()
     return userDao.withoutPicture(0,2);
 })
 .then(function(newImages){
+    return userDao.set({registered:1},[1]);
+})
+.then(function(newImages){
+    return likeDao.set({time:1},{user:1,image:1});
+})
+.then(function(newImages){
     return userDao.dropTable();
 })
 .then(function(images){
     return imageDao.dropTable();
 })
 .then(function(images){
-    return likeDao.dropTable();
-})
-.then(function(){
-    process.exit()
+    return likeDao.dropTable()
+        .then(function(){
+            require('./arrayTest')();
+            require('./countMysqlParameterTest')();
+            require('./isConnectionTest')();
+            return require('./prepareFetchMethodTest')()
+                .then(function(){
+                        process.exit()
+                });
+        });
 })
 .catch(function(err){
     console.log('failed:', err,err.stack);

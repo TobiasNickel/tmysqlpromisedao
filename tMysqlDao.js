@@ -340,31 +340,59 @@ module.exports = function (config) {
             dao.db = db;
 
             dao.insert = function (obj, connection) {
-                return db.insert(tableName, obj, connection);
+                return this.db.insert(tableName, obj, connection);
             };
 
             dao.save = function (objs, connection) {
-                return db.save(tableName, IDKeys, objs, connection);
+                return this.db.save(tableName, IDKeys, objs, connection);
             };
 
             dao.saveOne = function (obj, connection) {
-                return db.saveOne(tableName, IDKeys, obj, connection);
+                return this.db.saveOne(tableName, IDKeys, obj, connection);
+            };
+
+            dao.set = function (update, objs, connection) {
+                if (!Array.isArray(objs)) objs = [objs];
+                if (typeof update !== 'object') {
+                    throw new Error('update have to be an object with keyValuePairs');
+                }
+                var condition = '';
+                var params = [];
+                if (IDKeys.length > 1) {
+                    var builder = [];
+                    objs.forEach(function (obj) {
+                        builder.push('(' + IDKeys.join('=? AND ') + '=?)');
+                        IDKeys.forEach(function (key) {
+                            params.push(obj[key]);
+                        });
+                    });
+                    condition = '(' + builder.join('OR') + ')';
+                } else if (IDKeys.length == 1) {
+                    var IDKey = IDKeys[0];
+                    params = objs.map(function (obj) { return obj[IDKey] || obj; });
+                    condition = IDKey + ' IN (?)';
+                } else {
+                    throw new Error('no primary key spezified');
+                }
+                params.unshift(update);
+                var sql = 'update ' + this.tableName + ' SET ? WHERE ' + condition;
+                return this.db.query(sql, params, connection);
             };
 
             dao.getAll = function (page, pageSize, connection) {
-                return db.selectPaged('SELECT * FROM ??', [tableName], page, pageSize, connection);
+                return this.db.selectPaged('SELECT * FROM ??', [tableName], page, pageSize, connection);
             };
 
             dao.findWhere = function (obj, page, pageSize, connection) {
-                return db.findWhere(tableName, obj, page, pageSize, connection);
+                return this.db.findWhere(tableName, obj, page, pageSize, connection);
             };
-            
+
             dao.findOneWhere = function (obj, connection) {
-                return db.findOneWhere(tableName, obj, connection);
+                return this.db.findOneWhere(tableName, obj, connection);
             };
 
             dao.remove = function (obj, connection) {
-                return db.remove(tableName, IDKeys, obj, connection);
+                return this.db.remove(tableName, IDKeys, obj, connection);
             };
 
             dao.createTable = function (connection) {
@@ -385,11 +413,11 @@ module.exports = function (config) {
                     sql += ',PRIMARY KEY(' + primaries.join(',') + ')';
                 }
                 sql += ')';
-                return db.query(sql, params, connection);
+                return this.db.query(sql, params, connection);
             };
 
             dao.dropTable = function (conneciton) {
-                return db.query('DROP TABLE IF EXISTS ??', [tableName], conneciton);
+                return this.db.query('DROP TABLE IF EXISTS ??', [tableName], conneciton);
             };
 
             var fieldNames = Object.keys(dao.fields);
@@ -398,15 +426,15 @@ module.exports = function (config) {
                 var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
 
                 dao['getBy' + addName] = function (value, page, pageSize, connection) {
-                    return db.getBy(tableName, name, value, page, pageSize, connection);
+                    return this.db.getBy(tableName, name, value, page, pageSize, connection);
                 };
 
                 dao['getOneBy' + addName] = function (value, connection) {
-                    return db.getOneBy(tableName, name, value, connection);
+                    return this.db.getOneBy(tableName, name, value, connection);
                 };
 
                 dao['removeBy' + addName] = function (value, connection) {
-                    return db.remove(tableName, name, value, connection);
+                    return this.db.remove(tableName, name, value, connection);
                 };
 
                 prepareFetchMethod(db, dao, tableName, name, definition);

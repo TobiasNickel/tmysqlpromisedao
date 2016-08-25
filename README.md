@@ -69,9 +69,9 @@ application();
 ## Benefit
 
 After prepareController, the userDao will look as followed.
-Actually it is extented by many usefull methods usually needed working on a database.
+In fact, it is extented by many usefull methods, usefull to working on a database.
 All methods support to be executed in a [transaction](#transaction).
-getAll, findWhere, and getBy* methods support  [paging](#paging).
+getAll, findWhere, and getBy* methods support [paging](#paging).
 The functions to request and provide the response in a node-style-callback (err, res)
 
 ```javascript
