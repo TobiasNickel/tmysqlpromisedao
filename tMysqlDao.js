@@ -11,6 +11,18 @@ module.exports = function (config) {
         logQueries: true,
         pool: mysql.createPool(config),
         /**
+         * 
+         */
+        query: function(sql, params, connection){
+            var self = this;
+            return this._query(sql,params,connection).then(function(results){
+                if(Array.isArray(results) && self.factory){
+                    return results.map(function(row){return self.factory(row);});
+                }
+                return results;
+            });
+        }, 
+        /**
          * query method, that can get a connection, to support transactions
          * you can follow a paradime where you have connection  is the last params, and call query with both.
          * so your method can also run in a transaction. otherwise the query method is compatible to the mysql-connection/pool.query method
@@ -18,7 +30,7 @@ module.exports = function (config) {
          * @param {array} [params] the parameter that get insert into the query
          * @param {mysql-connection} connection to be used for this query.
          */
-        query(sql, params, connection) {
+        _query: function(sql, params, connection) {
             return db.newPromise(function (resolve, reject) {
                 if (isConnection(params)) {
                     connection = params;
@@ -52,7 +64,7 @@ module.exports = function (config) {
         /**
          * get a connectio where the transaction is started.
          */
-        beginTransaction() {
+        beginTransaction:function() {
             return db.newPromise(function (resolve, reject) {
                 db.pool.getConnection(function (err, connection) {
                     if (err) { reject(err); return }
@@ -99,7 +111,7 @@ module.exports = function (config) {
                             result = err;
                             done();
                         });
-                    db.query('SELECT count(*) as resultCount ' + sql.slice(sql.toLowerCase().indexOf('from')), params, connection)
+                    db._query('SELECT count(*) as resultCount ' + sql.slice(sql.toLowerCase().indexOf('from')), params, connection)
                         .then(function (c) {
                             var response = c[0] ? c[0] : { resultCount: 0 };
                             pages = {
@@ -375,7 +387,7 @@ module.exports = function (config) {
                     throw new Error('no primary key spezified');
                 }
                 params.unshift(update);
-                var sql = 'update ' + this.tableName + ' SET ? WHERE ' + condition;
+                var sql = 'UPDATE ' + this.tableName + ' SET ? WHERE ' + condition;
                 return this.db.query(sql, params, connection);
             };
 

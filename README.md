@@ -136,21 +136,26 @@ dao-API.
 
 
 ## Bestpractice
+Following these bestpractices you will have a good structure for your application,
+good support in most modern IDEs and editors and implement string conventions for
+accessing resources for you and your team.
 
-The module is designed for nodejs., so it is good if you make a file in your project
-as followed:
+### providing database
+The module is designed for nodejs. So it is good if you make a file in your project
+like the following:
 
 ```javascript
 var connectonConfig = require('./mysqlConfig.json');
-var db = module.exports = require('tmysqlcontroller')(connectionConfig);
+var db = module.exports = require('tmysqlpromisedao')(connectionConfig);
 ```
 You can already use this module to query the database, handle transactions, fetch and
-manipulate data on the database. But the better way is to provide dao-objects
-for each table. As you see, you can also make multiple of those, if you need to manage
-data acros multiple mysql-server.
+manipulate data on the database. But the better way is to provide one dao-object
+for each table. As you see, you can also make multiple database objects, for cases, when 
+you need to manage data across multiple mysql-server. 
 
 
-Then make a folder with your controllers that look like that:
+Then make a folder where you put file like the folliwing *userDao.js*, that look like 
+that:
 
 ```javascript
 var db = require('./db');
@@ -171,13 +176,32 @@ var userDao = module.exports = db.prepareDao({
 });
 
 ```
-
 You can also add more methods to the dao, that you need to meet your requiremets.
 but think: 
 The Dao is made to access the database, not directly for the application logic.
 If you relaize to repeat yourself or you have some interesting feature to extend this
 tmysqlpromiseDao, it might be interesting for this framework and you can add a proposal
 via issue on github.
+
+### SQL
+On the dao, you can provide many queries on the queries-key. On that property, there is
+key the new method-name and the value is some SQL-statement. tmysqlpromisedao will
+analyze the query to provide a function, where you can pass parameter, in the same
+order as they occur in the query. For select queries you have automaticly the support
+for paging and of course, in any case, transactions are supported. It is convinient 
+not to write the SQL statements as a string into the queries peoperty. A perfect
+solution is the [tsqlreader](https://www.npmjs.com/package/tsqlreader). It will parse
+an *.sql* file and provide the queries by there name. The tsqlreader has some more
+usefull features.
+
+### Conventions
+When adding new custom functions to a dao, you should follow the naming conventions,
+that this framework follows. The queries on that dao should only query objects, found
+on this table or maximum provide more fields by a join. methods that start with **fetch**
+should query some data, extend the given objects to provide neasted objects and return a
+the list of fetched objects. The methods have names, that start with a verb followed by a
+subject. That means with the userDao to something with/for something else. More general methods
+just provide a verb.
 
 ## Transaction
 
@@ -189,7 +213,9 @@ framework is even ready to implement distributed transactions.
 
 ### Use Transactions
 
-The usage of transactions is very close to the transactions of the mysql module, but needs one step less.
+The usage of transactions is very close to the transactions of the mysql module, but
+needs a step less and work seemlessly with promises. That makes writing furure javascript
+code a brease.
 
 ```javascript
 async function doSomethingInTransaction(){
@@ -204,17 +230,18 @@ async function doSomethingInTransaction(){
 doSomethingInTransaction();
 ````
 
-The db module internally uses the connectionpool of mysql. beginTransaction will get a connection from that pool and start the connection. When you commit or rollback, the framework will also release the connection back to the pool.
-
+Internally, the db module uses the connectionpool of mysql. beginTransaction will get a
+connection from that pool and start the connection. When you commit or rollback, the 
+framework will also release the connection back to the pool.
 
 ### Support Transactions
 
 You have seen, to use a method that supports transactions you pass the transaction-connection
 into the method, as the last parameter. This paradime let the developer support transactions,
-if they are used or not. 
+even if they are not used for the moment. 
 
-To write a method that supports the transactions, you simple pass the last argument into the 
-query methods as last argument.
+To write a method that supports the transactions, you simple pass the last argument into every 
+other the query methods as last argument.
 ```javascript
 /**
  * method to increase the likecount of a user
@@ -226,10 +253,12 @@ userDao.increaseById = function(id, amount, conneciton){
     return this.db.query('UPDATE ?? SET likes = likes + ? WHERE ?? = ?',[this.tableName, amount, 'id', id], connection);
 };
 ```
-You see, simple pass the connection into an other transaction supporting method.
+You see, simple pass the connection into an other transaction supporting method. If you don't use
+that transaction, the parameter will be undefined through all methods until the query method,
+witch will then take a free connection from the pool.
 
 
-# Paging
+## Paging
 
 The base of the pageing is db.selectPaged(). witch is the query method with two additional optional parameter. page and pageSize before the optional connection. It will execute the query using db.query with a sqlString extended by a limit clouse. It will also execute the query with counting the results, an object with the result and the counts.
 
@@ -242,7 +271,7 @@ userDao.getAll(0,10)
     });
 ```
 
-# Promise
+## Promise
 
 By default tmysqlpromisedao is using native promises in nodejs. If you want to use an other promise library,
 you can exchange the promiseFactory on the db. Following an example with bluebird.
@@ -276,8 +305,7 @@ db.newPromise = function(handler){
 
 
 # Function Reference
-For now check out the source under [Github/tobiasnickel/tmysqlpromisedao](https://github.com/TobiasNickel/tmysqlpromisedao). The code is not to long and documented
-To handle the more comples SQL you might want to checkout [tsqlreader](https://www.npmjs.com/package/tsqlreader).
+For now check out the source at [Github/tobiasnickel/tmysqlpromisedao](https://github.com/TobiasNickel/tmysqlpromisedao). The code is not to long and documented
 
 Tobias Nickel  
 
