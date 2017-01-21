@@ -128,8 +128,14 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        selectPaged: function (sql, params, page, pagesize, connection) {
+        selectPaged: function (sql, params, order, page, pagesize, connection) {
             var paging = '';
+            if(typeof order !== 'string'){
+                connection = pagesize;
+                pagesize = page;
+                page = order;
+                order = undefined;
+            }
             if (isConnection(page)) {
                 connection = page;
                 page = null;
@@ -145,7 +151,11 @@ module.exports = function (config) {
                     paging = ' LIMIT ' + (page * pagesize) + ',' + pagesize;
                     var pages = null;
                     var result = null;
-                    db.query(sql + paging, params, connection)
+                    var orderString = '';
+                    if(order){
+                        orderString = ' ORDER BY '+order;
+                    }
+                    db.query(sql + orderString + paging, params, connection)
                         .then(function (res) {
                             result = res;
                             done();
@@ -190,9 +200,9 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        getBy: function (tableName, fieldName, value, page, pagesize, connection) {
+        getBy: function (tableName, fieldName, value, order, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + fieldName + ' IN (?)';
-            return db.selectPaged(sql, value, page, pagesize, connection);
+            return db.selectPaged(sql, value, order, page, pagesize, connection);
         },
 
         /**
@@ -215,7 +225,7 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        findWhere: function (tableName, obj, page, pagesize, connection) {
+        findWhere: function (tableName, obj,order, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
             var where = '1 ';
             var values = [];
@@ -225,7 +235,7 @@ module.exports = function (config) {
                 values.push(i);
                 values.push(obj[i]);
             }
-            return db.selectPaged(sql + where, values, page, pagesize, connection);
+            return db.selectPaged(sql + where, values, order, page, pagesize, connection);
         },
 
         /**
@@ -248,7 +258,7 @@ module.exports = function (config) {
             return first(db.query(sql + where + limit, values, connection));
         },
 
-        where: function(tableName, where, params, page, pageSize, connection){
+        where: function(tableName, where, params, order, page, pageSize, connection){
             if(typeof params !== 'object'){
                 connection = pageSize;
                 pageSize = page;
@@ -256,18 +266,12 @@ module.exports = function (config) {
                 params = {};
             }
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + where;
-            return db.selectPaged(sql, params, page, pageSize, connection);
+            return db.selectPaged(sql, params, order, page, pageSize, connection);
         },
 
-        oneWhere: function (tableName, obj, connection) {
-            if(typeof params !== 'object'){
-                connection = pageSize;
-                pageSize = page;
-                page = params;
-                params = {};
-            }
+        oneWhere: function (tableName, params, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + where;
-            return first(db.selectPaged(sql, params, page, pageSize, connection));
+            return first(db.query(sql, params, connection));
         },
 
         /**
@@ -435,6 +439,7 @@ module.exports = function (config) {
 
             dao.promiseMap = function(p){
                 return p.then(function(items){
+                    if(typeof items !== 'object') return items;
                     if(Array.isArray(items)){
                         return items.map(dao.map);
                     } else {
@@ -488,8 +493,8 @@ module.exports = function (config) {
                 return this.db.query(sql, params, connection);
             };
 
-            dao.getAll = function (page, pageSize, connection) {
-                var promise = this.db.selectPaged('SELECT * FROM ??', [tableName], page, pageSize, connection);
+            dao.getAll = function (order, page, pageSize, connection) {
+                var promise = this.db.selectPaged('SELECT * FROM ??', [tableName], order, page, pageSize, connection);
                 return dao.promiseMap(promise);
             };
 
