@@ -307,7 +307,8 @@ module.exports = function (config) {
         /**
          * updates the values of a row, based on there primary key
          * @param {string} tableName, the table to insert
-         * @param {String | Array of String} primaries one or more names that make there primary key
+         * @param {String | Array of String} primaries one 
+         *                  or more names that make there primary key
          * @param {Object} keys only ONE object to update. (key can not change.)
          * @param {mysql-connection} connection to be used for this query.
          */
@@ -343,7 +344,8 @@ module.exports = function (config) {
 
         /**
          * to extend a controller-template with all possible usefull methods
-         * @param {object} comtroller having properties that discribe the table accessed by the controller.
+         * @param {object} comtroller having properties that discribe 
+         *                 the table accessed by the controller.
          */
         prepareDao: function (dao) {
             var tableName = dao.tableName;
@@ -392,7 +394,8 @@ module.exports = function (config) {
             };
 
             dao.getAll = function (page, pageSize, connection) {
-                return this.db.selectPaged('SELECT * FROM ??', [tableName], page, pageSize, connection);
+                return this.db.selectPaged('SELECT * FROM ??', 
+                    [tableName], page, pageSize, connection);
             };
 
             dao.findWhere = function (obj, page, pageSize, connection) {
