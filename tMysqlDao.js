@@ -7,21 +7,22 @@ var prepareConditionalMethod = require('./lib/prepareConditionalMethod');
 var first = require('./lib/promiseFirst');
 
 module.exports = function (config) {
+    "use strict";
     var db = {
         logQueries: true,
         pool: mysql.createPool(config),
         /**
-         * 
+         *
          */
-        query: function(sql, params, connection){
+        query: function (sql, params, connection) {
             var self = this;
-            return this._query(sql,params,connection).then(function(results){
-                if(Array.isArray(results) && self.factory){
-                    return results.map(function(row){return self.factory(row);});
+            return this._query(sql, params, connection).then(function (results) {
+                if (Array.isArray(results) && self.factory) {
+                    return results.map(function (row) { return self.factory(row); });
                 }
                 return results;
             });
-        }, 
+        },
         /**
          * query method, that can get a connection, to support transactions
          * you can follow a paradime where you have connection  is the last params, and call query with both.
@@ -30,13 +31,15 @@ module.exports = function (config) {
          * @param {array} [params] the parameter that get insert into the query
          * @param {mysql-connection} connection to be used for this query.
          */
-        _query: function(sql, params, connection) {
+        _query: function (sql, params, connection) {
             return db.newPromise(function (resolve, reject) {
                 if (isConnection(params)) {
                     connection = params;
                     params = [];
                 }
-                if (!isConnection(connection)) connection = db.pool;
+                if (!isConnection(connection)) {
+                    connection = db.pool;
+                }
                 if (db.logQueries) {
                     console.log(mysql.format(sql, params));
                 }
@@ -64,16 +67,49 @@ module.exports = function (config) {
         /**
          * get a connectio where the transaction is started.
          */
-        beginTransaction:function() {
+        beginTransaction: function () {
             return db.newPromise(function (resolve, reject) {
                 db.pool.getConnection(function (err, connection) {
-                    if (err) { reject(err); return }
+                    if (err) { reject(err); return; }
                     connection.beginTransaction(function (err) {
                         if (err) { reject(err); return; }
                         resolve(extendTransactionConnection(connection));
                     });
                 });
-            })
+            });
+        },
+        beginReadOnlyTransaction: function () {
+            return db.newPromise(function (resolve, reject) {
+                db.pool.getConnection(function (err, connection) {
+                    if (err) { reject(err); return; }
+                    connection.query('START TRANSACTION READ ONLY;', function (err) {
+                        if (err) { reject(err); return; }
+                        resolve(extendTransactionConnection(connection));
+                    });
+                });
+            });
+        },
+        beginReadWriteTransaction: function () {
+            return db.newPromise(function (resolve, reject) {
+                db.pool.getConnection(function (err, connection) {
+                    if (err) { reject(err); return; }
+                    connection.query('START TRANSACTION READ WRITE;', function (err) {
+                        if (err) { reject(err); return; }
+                        resolve(extendTransactionConnection(connection));
+                    });
+                });
+            });
+        },
+        beginTransactionWithConsistentSnapshot: function () {
+            return db.newPromise(function (resolve, reject) {
+                db.pool.getConnection(function (err, connection) {
+                    if (err) { reject(err); return; }
+                    connection.query('START TRANSACTION WITH CONSISTENT SNAPSHOT;', function (err) {
+                        if (err) { reject(err); return; }
+                        resolve(extendTransactionConnection(connection));
+                    });
+                });
+            });
         },
 
         defaultPagesize: 20,
@@ -117,7 +153,7 @@ module.exports = function (config) {
                             pages = {
                                 resultCount: response.resultCount,
                                 pageCount: Math.ceil(response.resultCount / pagesize)
-                            }
+                            };
                             done();
                         }).catch(function (err) {
                             pages = err;
@@ -155,7 +191,7 @@ module.exports = function (config) {
 
         /**
          * query data with a specific property.
-         * @param {string} tableName, the table 
+         * @param {string} tableName, the table
          * @param {string} fieldName the name of the collom
          * @param {mixed} value one or an Array of simple values where the result should have (String, Number, Boolean, null)
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
@@ -168,7 +204,7 @@ module.exports = function (config) {
 
         /**
          * query rows that have multiple specific values
-         * @param {string} tableName, the table 
+         * @param {string} tableName, the table
          * @param {object} object with key-values that should metch the resultRows
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
@@ -177,6 +213,7 @@ module.exports = function (config) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
             var where = '1 ';
             var values = [];
+
             for (var i in obj) {
                 where += ' AND ?? = ?';
                 values.push(i);
@@ -187,7 +224,7 @@ module.exports = function (config) {
 
         /**
          * query rows that have multiple specific values
-         * @param {string} tableName, the table 
+         * @param {string} tableName, the table
          * @param {object} object with key-values that should metch the resultRows
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
@@ -204,7 +241,6 @@ module.exports = function (config) {
             var limit = ' LIMIT 0,1;';
             return first(db.query(sql + where + limit, values, connection));
         },
-
         /**
          * remove objects according to there primary key.
          * @param {string} tableName, the table
@@ -307,7 +343,7 @@ module.exports = function (config) {
         /**
          * updates the values of a row, based on there primary key
          * @param {string} tableName, the table to insert
-         * @param {String | Array of String} primaries one 
+         * @param {String | Array of String} primaries one
          *                  or more names that make there primary key
          * @param {Object} keys only ONE object to update. (key can not change.)
          * @param {mysql-connection} connection to be used for this query.
@@ -344,7 +380,7 @@ module.exports = function (config) {
 
         /**
          * to extend a controller-template with all possible usefull methods
-         * @param {object} comtroller having properties that discribe 
+         * @param {object} comtroller having properties that discribe
          *                 the table accessed by the controller.
          */
         prepareDao: function (dao) {
@@ -394,7 +430,7 @@ module.exports = function (config) {
             };
 
             dao.getAll = function (page, pageSize, connection) {
-                return this.db.selectPaged('SELECT * FROM ??', 
+                return this.db.selectPaged('SELECT * FROM ??',
                     [tableName], page, pageSize, connection);
             };
 
@@ -499,6 +535,19 @@ module.exports = function (config) {
                         connection.release();
                         resolve(null);
                     });
+                });
+            };
+
+            connection.setAutocommit = function (on) {
+                on = on ? 1 : 0;
+                return db.newPromise(function (resolve, reject) {
+                    connection.query('SET autocommit = ?', [on], function (err) {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        resolve();
+                    })
                 });
             };
         }
