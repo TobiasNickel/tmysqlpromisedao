@@ -9,6 +9,9 @@ var first = require('./lib/promiseFirst');
 module.exports = function (config) {
     "use strict";
     var db = {
+
+        daos:{},
+
         logQueries: true,
         pool: mysql.createPool(config),
         /**
@@ -411,20 +414,50 @@ module.exports = function (config) {
          */
         prepareDao: function (dao) {
             var tableName = dao.tableName;
+
+            db.daos[tableName] = dao;
+            
+            if(typeof dao.map !=='function'){
+                dao.map = function(item){ return item; };
+            }
+            if(typeof dao.inputMap !== 'function'){
+                dao.inputMap = function(item){return item;};
+            }
+            dao.inputMapAll = function(items){
+                if(Array.isArray(items)){
+                    return items.map(function(item){
+                        return dao.inputMap(item)
+                    });
+                }else{
+                    return dao.inputMap(items);
+                }
+            }
+
+            dao.promiseMap = function(p){
+                return p.then(function(items){
+                    if(Array.isArray(items)){
+                        return items.map(dao.map);
+                    } else {
+                        //one item
+                        return dao.map(items)
+                    }
+                });
+            };
+
             var IDKeys = [];
 
             dao.db = db;
 
             dao.insert = function (obj, connection) {
-                return this.db.insert(tableName, obj, connection);
+                return this.db.insert(tableName, dao.inputMapAll(obj), connection);
             };
 
             dao.save = function (objs, connection) {
-                return this.db.save(tableName, IDKeys, objs, connection);
+                return this.db.save(tableName, IDKeys, dao.inputMapAll(objs), connection);
             };
 
             dao.saveOne = function (obj, connection) {
-                return this.db.saveOne(tableName, IDKeys, obj, connection);
+                return this.db.saveOne(tableName, IDKeys, dao.inputMapAll(obj), connection);
             };
 
             dao.set = function (update, objs, connection) {
@@ -456,24 +489,28 @@ module.exports = function (config) {
             };
 
             dao.getAll = function (page, pageSize, connection) {
-                return this.db.selectPaged('SELECT * FROM ??',
-                    [tableName], page, pageSize, connection);
+                var promise = this.db.selectPaged('SELECT * FROM ??', [tableName], page, pageSize, connection);
+                return dao.promiseMap(promise);
             };
 
             dao.findWhere = function (obj, page, pageSize, connection) {
-                return this.db.findWhere(tableName, obj, page, pageSize, connection);
+                var promise = this.db.findWhere(tableName, obj, page, pageSize, connection);
+                return dao.promiseMap(promise);
             };
 
             dao.findOneWhere = function (obj, connection) {
-                return this.db.findOneWhere(tableName, obj, connection);
+                var promise = this.db.findOneWhere(tableName, obj, connection);
+                return dao.promiseMap(promise);
             };
 
             dao.where = function(where, params, page, pageSize, connection){
-                return this.db.where(tableName, where, params, page, pageSize, connection)
+                var promise = this.db.where(tableName, where, params, page, pageSize, connection);
+                return dao.promiseMap(promise);
             };
 
             dao.oneWhere = function(where, params, connection){
-                return this.db.oneWhere(tableName, where, params, connection)
+                var promise = this.db.oneWhere(tableName, where, params, connection);
+                return dao.promiseMap(promise);
             };
 
             dao.remove = function (obj, connection) {
@@ -511,11 +548,13 @@ module.exports = function (config) {
                 var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
 
                 dao['getBy' + addName] = function (value, page, pageSize, connection) {
-                    return this.db.getBy(tableName, name, value, page, pageSize, connection);
+                    var promise = this.db.getBy(tableName, name, value, page, pageSize, connection);
+                    return dao.promiseMap(promise);
                 };
 
                 dao['getOneBy' + addName] = function (value, connection) {
-                    return this.db.getOneBy(tableName, name, value, connection);
+                    var promise = this.db.getOneBy(tableName, name, value, connection);
+                    return dao.promiseMap(promise);
                 };
 
                 dao['removeBy' + addName] = function (value, connection) {
