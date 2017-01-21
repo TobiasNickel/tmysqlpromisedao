@@ -31,19 +31,22 @@ module.exports = function (config) {
          * @param {array} [params] the parameter that get insert into the query
          * @param {mysql-connection} connection to be used for this query.
          */
-        _query: function (sql, params, connection) {
+        _query: function(sql, params, connection) {
             return db.newPromise(function (resolve, reject) {
                 if (isConnection(params)) {
                     connection = params;
                     params = [];
                 }
-                if (!isConnection(connection)) {
-                    connection = db.pool;
-                }
-                if (db.logQueries) {
-                    console.log(mysql.format(sql, params));
-                }
+                if (!isConnection(connection)) connection = db.pool;
+                var start = Date.now();
                 connection.query(sql, params, function (err, data) {
+
+                    if (db.logQueries) {
+                        var end = Date.now()
+                        console.log(mysql.format(sql, params), end-start+'ms');
+                        if(err) console.log(err)
+                    }
+
                     if (err) {
                         reject(err);
                     } else {
@@ -241,6 +244,29 @@ module.exports = function (config) {
             var limit = ' LIMIT 0,1;';
             return first(db.query(sql + where + limit, values, connection));
         },
+
+        where: function(tableName, where, params, page, pageSize, connection){
+            if(typeof params !== 'object'){
+                connection = pageSize;
+                pageSize = page;
+                page = params;
+                params = {};
+            }
+            var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + where;
+            return db.selectPaged(sql, params, page, pageSize, connection);
+        },
+
+        oneWhere: function (tableName, obj, connection) {
+            if(typeof params !== 'object'){
+                connection = pageSize;
+                pageSize = page;
+                page = params;
+                params = {};
+            }
+            var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + where;
+            return first(db.selectPaged(sql, params, page, pageSize, connection));
+        },
+
         /**
          * remove objects according to there primary key.
          * @param {string} tableName, the table
@@ -440,6 +466,14 @@ module.exports = function (config) {
 
             dao.findOneWhere = function (obj, connection) {
                 return this.db.findOneWhere(tableName, obj, connection);
+            };
+
+            dao.where = function(where, params, page, pageSize, connection){
+                return this.db.where(tableName, where, params, page, pageSize, connection)
+            };
+
+            dao.oneWhere = function(where, params, connection){
+                return this.db.oneWhere(tableName, where, params, connection)
             };
 
             dao.remove = function (obj, connection) {

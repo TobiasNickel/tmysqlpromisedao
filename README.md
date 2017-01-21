@@ -36,7 +36,7 @@ var userDao = {
         //fetch neasted images, that belong to users
         // returns the images, and extend the provided users.
     },
-    conditionsals: {
+    conditionals: {
         new: {condition:'TO_DAYS(registered) > (TO_DAYS(NOW())-10)', multiple: true },
         // condition just the where-clause of the sql to fetch users.
     },
@@ -115,6 +115,11 @@ userDao = {
     // as a third parameter it provides the original result list. (as flatt array)
     fetchProfilePicures: function(obj){/*logic to fetch screen objects and attatch them to the given userObjects*/},
     fetchAvatar: function(obj){/* load image from ImageTable and attatch it to the user */}
+
+    findWhere: function(){/*takes an object with props to match*/,
+    findOneWhere: function(){},
+    where: function(){/*takes the where-clause of a query*/},
+    oneWhere: function(){},
 
     // delete objects based on the key
     remove: function(objs){/* remove logic*/},
