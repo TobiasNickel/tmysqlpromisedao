@@ -547,6 +547,36 @@ module.exports = function (config) {
                 return this.db.query('DROP TABLE IF EXISTS ??', [tableName], conneciton);
             };
 
+            /**
+             * 
+             * 
+             * @param {String} word
+             */
+            dao.search = function(word, filter, order, page, pagesize, connection){
+                var sql = 'SELECT * FROM ' + tableName + ' ';
+                var params = [];
+                var escaped = '%'+escape(word)+'%';
+                sql += '('+fieldNames.join(' LIKE ? OR ')+' like ?)';
+                times(fieldNames.length, function(){
+                    params.push(escaped);
+                });
+                if(filter!==undefined){
+                    if(typeof filter==='object' && !isConnection(filter)){
+                        for(var i in filter){
+                            console.assert(fieldNames.indexOf(i)!==-1, 'field need to be defined');
+                            sql+=' AND ?? = ?';
+                            params.push(i,filter[i]);
+                        }
+                    }else{
+                        connection = pageSize;
+                        pagesize = page;
+                        page = order;
+                        order = filter;
+                    }
+                }
+                return this.db.selectPaged(sql,params,order,page,pagesize,connection);
+            };
+
             var fieldNames = Object.keys(dao.fields);
             fieldNames.forEach(function (name) {
                 var definition = dao.fields[name];
@@ -634,3 +664,13 @@ module.exports = function (config) {
     return db;
 }
 
+var times = function(repitations,cb){
+    for(var i=0; i<repitations;i++){
+        cb(i);
+    }
+};
+
+var escape = function(value){
+    var excaped = mysql.format('?',[value]);
+    return escaped.substr(1,escaped.length-2);
+};

@@ -121,6 +121,8 @@ userDao = {
     where: function(){/*takes the where-clause of a query*/},
     oneWhere: function(){},
 
+    search: function(word,filterObj){/*fulltextSearch on all fields+filter like in where*/},
+
     // delete objects based on the key
     remove: function(objs){/* remove logic*/},
     // insert a single object matching the row fieldnames, extending the key if possiable
