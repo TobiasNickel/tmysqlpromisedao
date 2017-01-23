@@ -558,16 +558,36 @@ module.exports = function (config) {
                 var sql = 'SELECT * FROM ' + tableName + ' ';
                 var params = [];
                 var escaped = '%'+escape(word)+'%';
-                sql += '('+fieldNames.join(' LIKE ? OR ')+' like ?)';
+                sql += '('+fieldNames.join(' LIKE ? OR ')+' like ?) ';
                 times(fieldNames.length, function(){
                     params.push(escaped);
                 });
                 if(filter!==undefined){
                     if(typeof filter==='object' && !isConnection(filter)){
-                        for(var i in filter){
-                            console.assert(fieldNames.indexOf(i)!==-1, 'field need to be defined');
-                            sql+=' AND ?? = ?';
-                            params.push(i,filter[i]);
+                        for(var propName in filter){
+                            if(fieldNames.indexOf(i)===-1){
+                                continue;
+                            }
+                            var value = filter[propName];
+                            if(typeof value === 'string') {
+                                var inditator = value[0];
+                                if (indicator === '>') {
+                                    sql += 'and '+ propName + ' > ? ';
+                                    params.push(value.substr(1));
+                                } else if (indicator === '<') {
+                                    sql += 'and '+ propName + ' < ? ';
+                                    params.push(value.substr(1));
+                                } else if (indicator === '!') {
+                                    sql += 'and '+ propName + ' <> ? ';
+                                    params.push(value.substr(1));
+                                } else {
+                                    sql += 'and '+ propName + ' = ? ';
+                                    params.push(value);
+                                }
+                            } else {
+                                sql+=' AND ?? = ?';
+                                params.push(i, value);
+                            }
                         }
                     }else{
                         connection = pageSize;
