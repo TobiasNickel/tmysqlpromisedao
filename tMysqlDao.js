@@ -548,7 +548,9 @@ module.exports = function (config) {
             };
 
             /**
-             * 
+             * default search function for a table
+             * search fulltext on all fields.
+             * allow to use a filter object like in "findWhere"
              * 
              * @param {String} word
              */
