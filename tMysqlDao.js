@@ -130,7 +130,7 @@ module.exports = function (config) {
          */
         selectPaged: function (sql, params, order, page, pagesize, connection) {
             var paging = '';
-            if(typeof order !== 'string'){
+            if(typeof order !== 'string' && order !== undefined && order !== null){
                 connection = pagesize;
                 pagesize = page;
                 page = order;
@@ -183,7 +183,7 @@ module.exports = function (config) {
                                 reject(result);
                             } else {
                                 result.pageCount = pages.pageCount;
-                                result.resultCount;
+                                result.resultCount = pages.resultCount;
                                 resolve(result);
                             }
                         }
@@ -441,7 +441,10 @@ module.exports = function (config) {
                 return p.then(function(items){
                     if(typeof items !== 'object') return items;
                     if(Array.isArray(items)){
-                        return items.map(dao.map);
+                        var res =  items.map(dao.map);
+                        res.resultCount = items.resultCount;
+                        res.pageCount = items.pageCount;
+                        return res;
                     } else {
                         //one item
                         return dao.map(items)
@@ -555,39 +558,63 @@ module.exports = function (config) {
              * @param {String} word
              */
             dao.search = function(word, filter, order, page, pagesize, connection){
-                var sql = 'SELECT * FROM ' + tableName + ' ';
+                var sql = 'SELECT * FROM ' + tableName;
+                var where = '';
                 var params = [];
-                var escaped = '%'+escape(word)+'%';
-                sql += '('+fieldNames.join(' LIKE ? OR ')+' like ?) ';
-                times(fieldNames.length, function(){
-                    params.push(escaped);
-                });
+                if(word){
+                    var escaped = '%'+escape(word)+'%';
+                    where += '('+fieldNames.join(' LIKE ? OR ')+' LIKE ?) ';
+                    times(fieldNames.length, function(){
+                        params.push(escaped);
+                    });
+                }
                 if(filter!==undefined){
                     if(typeof filter==='object' && !isConnection(filter)){
                         for(var propName in filter){
-                            if(fieldNames.indexOf(i)===-1){
-                                continue;
+                            if(fieldNames.indexOf(propName)===-1){
+                                return Promise.reject(new Error('invalid property '+propName))
+                                //continue;
+                            }
+                            if(where.length){
+                                where += ' AND ';
                             }
                             var value = filter[propName];
                             if(typeof value === 'string') {
-                                var inditator = value[0];
+                                var indicator = value[0];
                                 if (indicator === '>') {
-                                    sql += 'and '+ propName + ' > ? ';
+                                    where += propName + ' > ? ';
                                     params.push(value.substr(1));
                                 } else if (indicator === '<') {
-                                    sql += 'and '+ propName + ' < ? ';
+                                    where += propName + ' < ? ';
                                     params.push(value.substr(1));
                                 } else if (indicator === '!') {
-                                    sql += 'and '+ propName + ' <> ? ';
+                                    where += propName + ' <> ? ';
                                     params.push(value.substr(1));
-                                } else {
-                                    sql += 'and '+ propName + ' = ? ';
+                                } else if(value.indexOf('<>')>0){
+                                    var values = value.split('<>');
+                                    values.sort(function (a, b) {
+                                        if (a < b) {
+                                            return -1;
+                                        } else {
+                                            return 1;
+                                        }
+                                    });
+                                    where += propName + '>=? AND ' + propName + '<=? '
+                                    params.push(values[0], values[1]);
+                                }else{
+                                    where += ' '+ propName + ' = ? ';
                                     params.push(value);
                                 }
-                            } else {
-                                sql+=' AND ?? = ?';
-                                params.push(i, value);
+                            } else if(Array.isArray(value)){
+                                where+='?? IN (?)';
+                                params.push(propName, value);
+                            }else{
+                                where+='?? = ?';
+                                params.push(propName, value);
                             }
+                        }
+                        if(where.length){
+                            sql+= ' WHERE ' + where;
                         }
                     }else{
                         connection = pageSize;
@@ -596,7 +623,7 @@ module.exports = function (config) {
                         order = filter;
                     }
                 }
-                return this.db.selectPaged(sql,params,order,page,pagesize,connection);
+                return dao.promiseMap(this.db.selectPaged(sql,params,order,page,pagesize,connection));
             };
 
             var fieldNames = Object.keys(dao.fields);
@@ -693,6 +720,6 @@ var times = function(repitations,cb){
 };
 
 var escape = function(value){
-    var excaped = mysql.format('?',[value]);
+    var escaped = mysql.format('?',[value]);
     return escaped.substr(1,escaped.length-2);
 };

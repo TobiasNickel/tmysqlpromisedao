@@ -1,6 +1,6 @@
 {
   "name": "tmysqlpromisedao",
-  "version": "1.9.20",
+  "version": "1.10.25",
   "description": "handle mysql the direct way, ready for async await",
   "main": "tMysqlDao.js",
   "scripts": {
