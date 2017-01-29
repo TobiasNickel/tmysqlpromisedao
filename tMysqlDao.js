@@ -1,4 +1,5 @@
 var mysql = require('mysql');
+var tcacher = require('tcacher');
 var newPromise = require('./lib/newPromise');
 var prepareFetchMethod = require('./lib/prepareFetchMethod');
 var prepareQueryMethod = require('./lib/prepareQueryMethod');
@@ -200,10 +201,13 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        getBy: function (tableName, fieldName, value, order, page, pagesize, connection) {
+        getBy: tcacher.toCachingFunction(function (tableName, fieldName, value, order, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + fieldName + ' IN (?)';
             return db.selectPaged(sql, value, order, page, pagesize, connection);
-        },
+        },{
+            resultProp: 1,
+            listIndex: 2
+        }),
 
         /**
          * query data with a specific property.
@@ -214,8 +218,7 @@ module.exports = function (config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         getOneBy: function (tableName, fieldName, value, connection) {
-            var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + fieldName + ' IN (?) LIMIT 0, 1;';
-            return first(db.query(sql, value, connection));
+            return first(db.getBy(tableName, fieldName, value, connection));
         },
 
         /**
@@ -227,13 +230,15 @@ module.exports = function (config) {
          */
         findWhere: function (tableName, obj,order, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
-            var where = '1 ';
+            var where = '';
             var values = [];
 
             for (var i in obj) {
-                where += ' AND ?? = ?';
-                values.push(i);
-                values.push(obj[i]);
+                if(where.length){
+                    where += ' AND '
+                }
+                where += '??=?';
+                values.push(i, obj[i]);
             }
             return db.selectPaged(sql + where, values, order, page, pagesize, connection);
         },
@@ -247,12 +252,14 @@ module.exports = function (config) {
          */
         findOneWhere: function (tableName, obj, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
-            var where = '1 ';
+            var where = '';
             var values = [];
             for (var i in obj) {
-                where += ' AND ?? = ?';
-                values.push(i);
-                values.push(obj[i]);
+                if(where.length){
+                    where += ' AND '
+                }
+                where += '??=?';
+                values.push(i, obj[i]);
             }
             var limit = ' LIMIT 0,1;';
             return first(db.query(sql + where + limit, values, connection));
@@ -330,11 +337,10 @@ module.exports = function (config) {
             }
 
             var sql = 'INSERT INTO ' + tableName + ' SET ?';
-            return db.query(sql, val, connection)
-                .then(function (result) {
-                    obj.id = result.insertId;
-                    return result.insertId;
-                });
+            return db.query(sql, val, connection).then(function (result) {
+                obj.id = result.insertId;
+                return result.insertId;
+            });
         },
 
         /**
@@ -351,24 +357,22 @@ module.exports = function (config) {
                 var count = 0;
                 var errors = [];
                 objs.forEach(function (obj) {
-                    db.saveOne(tableName, primaries, obj, connection)
-                        .then(function () {
-                            count++;
-                            if (count === number) {
-                                if (errors.length) {
-                                    reject(errors);
-                                } else {
-                                    resolve();
-                                }
-                            }
-                        })
-                        .catch(function (err) {
-                            count++;
-                            errors.push([obj, err]);
-                            if (count === number) {
+                    db.saveOne(tableName, primaries, obj, connection).then(function () {
+                        count++;
+                        if (count === number) {
+                            if (errors.length) {
                                 reject(errors);
+                            } else {
+                                resolve();
                             }
-                        })
+                        }
+                    }).catch(function (err) {
+                        count++;
+                        errors.push([obj, err]);
+                        if (count === number) {
+                            reject(errors);
+                        }
+                    })
                 });
             });
         },
@@ -637,8 +641,8 @@ module.exports = function (config) {
                 };
 
                 dao['getOneBy' + addName] = function (value, connection) {
-                    var promise = this.db.getOneBy(tableName, name, value, connection);
-                    return dao.promiseMap(promise);
+                    return first(this['getBy' + addName](value, connection));
+                    //return dao.promiseMap(promise);
                 };
 
                 dao['removeBy' + addName] = function (value, connection) {
