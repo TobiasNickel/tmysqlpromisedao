@@ -1,6 +1,6 @@
 {
   "name": "tmysqlpromisedao",
-  "version": "2.10.25",
+  "version": "2.10.26",
   "description": "handle mysql the direct way, ready for async await",
   "main": "tMysqlDao.js",
   "scripts": {
@@ -25,7 +25,8 @@
   "author": "Tobias Nickel",
   "license": "MIT",
   "dependencies": {
-    "mysql": "^2.11.1"
+    "mysql": "^2.11.1",
+    "tcacher": "0.0.2"
   },
   "devDependencies": {
     "regenerator": "^0.8.46"
