@@ -18,7 +18,8 @@ var db = tMysqlDao({
     connectionLimit: 5,
     user: 'root',
     password: '',
-    database: 'dbname'
+    database: 'dbname',
+    registry: {} // optional
 });
 // define a controller Template
 var userDao = {
@@ -277,6 +278,11 @@ userDao.getAll(0,10)
         console.log(res.pageCount) // 20
     });
 ```
+
+## Registry
+In the initial configuration you have already seen the optional parameter *registry*. This is an optional feature, that will allow you to mashup data sources. By that I mean, that you can use different databases, database types, storrage systems/services, APIs together. 
+
+You might store your users in relational database Mysql, but posts in Mongo, and you use a location service (i.e.: [OSM](https://www.openstreetmap.org/))to map the users adresses to a map. And in the same way, you *fetch* data from related tables, you could fetch data and merge it from any other resource.
 
 ## Promise
 

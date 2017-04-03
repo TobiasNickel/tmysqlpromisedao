@@ -5,7 +5,7 @@ var db = tmysqldao({
     host: process.env.HOST || 'localhost',
     user: process.env.USER || 'root',
     password: process.env.PASSWORD || '',
-    database: process.env.DB || 'screen'
+    database: process.env.DB || 'daotest'
     //,debug:true
 });
 
@@ -110,6 +110,7 @@ async function test(){
         await imageDao.dropTable();
         await likeDao.dropTable();
         //await userDao.dropTable();
+        process.exit(0);
     }catch(err){
         console.log('failed:', err,err.stack);
     }

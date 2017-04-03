@@ -1,38 +1,38 @@
 {
-  "name": "tmysqlpromisedao",
-  "version": "2.10.26",
-  "description": "handle mysql the direct way, ready for async await",
-  "main": "tMysqlDao.js",
-  "scripts": {
-    "test": "node test.js",
-    "compileTest":"regenerator -r asyncTest.js > asyncTestBuild.js",
-    "asyncTest":"node asyncTestBuild.js",
-    "testAsync":"regenerator -r asyncTest.js > asyncTestBuild.js && node asyncTestBuild.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/TobiasNickel/tmysqlpromisedao.git"
-  },
-  "keywords": [
-    "mysql",
-    "controller",
-    "model",
-    "orm",
-    "dsl",
-    "promise",
-    "tested"
-  ],
-  "author": "Tobias Nickel",
-  "license": "MIT",
-  "dependencies": {
-    "mysql": "^2.11.1",
-    "tcacher": "0.0.2"
-  },
-  "devDependencies": {
-    "regenerator": "^0.8.46"
-  },
-  "bugs": {
-    "url": "https://github.com/TobiasNickel/tmysqlpromisedao/issues"
-  },
-  "homepage": "https://github.com/TobiasNickel/tmysqlpromisedao#readme"
+    "name": "tmysqlpromisedao",
+    "version": "2.12.27",
+    "description": "handle mysql the direct way, ready for async await",
+    "main": "tMysqlDao.js",
+    "scripts": {
+        "test": "node test.js",
+        "compileTest": "regenerator -r asyncTest.js > asyncTestBuild.js",
+        "asyncTest": "node asyncTestBuild.js",
+        "testAsync": "regenerator -r asyncTest.js > asyncTestBuild.js && node asyncTestBuild.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/TobiasNickel/tmysqlpromisedao.git"
+    },
+    "keywords": [
+        "mysql",
+        "controller",
+        "model",
+        "orm",
+        "dsl",
+        "promise",
+        "tested"
+    ],
+    "author": "Tobias Nickel",
+    "license": "MIT",
+    "dependencies": {
+        "mysql": "^2.11.1",
+        "tcacher": "0.0.2"
+    },
+    "devDependencies": {
+        "regenerator": "^0.8.46"
+    },
+    "bugs": {
+        "url": "https://github.com/TobiasNickel/tmysqlpromisedao/issues"
+    },
+    "homepage": "https://github.com/TobiasNickel/tmysqlpromisedao#readme"
 }

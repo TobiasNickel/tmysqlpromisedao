@@ -7,22 +7,22 @@ var isConnection = require('./lib/isConnection');
 var prepareConditionalMethod = require('./lib/prepareConditionalMethod');
 var first = require('./lib/promiseFirst');
 
-module.exports = function (config) {
+module.exports = function(config) {
     "use strict";
     var db = {
 
-        daos:{},
+        daos: config.registry || {},
 
         logQueries: true,
         pool: mysql.createPool(config),
         /**
          *
          */
-        query: function (sql, params, connection) {
+        query: function(sql, params, connection) {
             var self = this;
-            return this._query(sql, params, connection).then(function (results) {
+            return this._query(sql, params, connection).then(function(results) {
                 if (Array.isArray(results) && self.factory) {
-                    return results.map(function (row) { return self.factory(row); });
+                    return results.map(function(row) { return self.factory(row); });
                 }
                 return results;
             });
@@ -36,19 +36,19 @@ module.exports = function (config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         _query: function(sql, params, connection) {
-            return db.newPromise(function (resolve, reject) {
+            return db.newPromise(function(resolve, reject) {
                 if (isConnection(params)) {
                     connection = params;
                     params = [];
                 }
                 if (!isConnection(connection)) connection = db.pool;
                 var start = Date.now();
-                connection.query(sql, params, function (err, data) {
+                connection.query(sql, params, function(err, data) {
 
                     if (db.logQueries) {
                         var end = Date.now()
-                        console.log(mysql.format(sql, params), end-start+'ms');
-                        if(err) console.log(err)
+                        console.log(mysql.format(sql, params), end - start + 'ms');
+                        if (err) console.log(err)
                     }
 
                     if (err) {
@@ -74,44 +74,44 @@ module.exports = function (config) {
         /**
          * get a connectio where the transaction is started.
          */
-        beginTransaction: function () {
-            return db.newPromise(function (resolve, reject) {
-                db.pool.getConnection(function (err, connection) {
+        beginTransaction: function() {
+            return db.newPromise(function(resolve, reject) {
+                db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
-                    connection.beginTransaction(function (err) {
+                    connection.beginTransaction(function(err) {
                         if (err) { reject(err); return; }
                         resolve(extendTransactionConnection(connection));
                     });
                 });
             });
         },
-        beginReadOnlyTransaction: function () {
-            return db.newPromise(function (resolve, reject) {
-                db.pool.getConnection(function (err, connection) {
+        beginReadOnlyTransaction: function() {
+            return db.newPromise(function(resolve, reject) {
+                db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
-                    connection.query('START TRANSACTION READ ONLY;', function (err) {
+                    connection.query('START TRANSACTION READ ONLY;', function(err) {
                         if (err) { reject(err); return; }
                         resolve(extendTransactionConnection(connection));
                     });
                 });
             });
         },
-        beginReadWriteTransaction: function () {
-            return db.newPromise(function (resolve, reject) {
-                db.pool.getConnection(function (err, connection) {
+        beginReadWriteTransaction: function() {
+            return db.newPromise(function(resolve, reject) {
+                db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
-                    connection.query('START TRANSACTION READ WRITE;', function (err) {
+                    connection.query('START TRANSACTION READ WRITE;', function(err) {
                         if (err) { reject(err); return; }
                         resolve(extendTransactionConnection(connection));
                     });
                 });
             });
         },
-        beginTransactionWithConsistentSnapshot: function () {
-            return db.newPromise(function (resolve, reject) {
-                db.pool.getConnection(function (err, connection) {
+        beginTransactionWithConsistentSnapshot: function() {
+            return db.newPromise(function(resolve, reject) {
+                db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
-                    connection.query('START TRANSACTION WITH CONSISTENT SNAPSHOT;', function (err) {
+                    connection.query('START TRANSACTION WITH CONSISTENT SNAPSHOT;', function(err) {
                         if (err) { reject(err); return; }
                         resolve(extendTransactionConnection(connection));
                     });
@@ -129,9 +129,9 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        selectPaged: function (sql, params, order, page, pagesize, connection) {
+        selectPaged: function(sql, params, order, page, pagesize, connection) {
             var paging = '';
-            if(typeof order !== 'string' && order !== undefined && order !== null){
+            if (typeof order !== 'string' && order !== undefined && order !== null) {
                 connection = pagesize;
                 pagesize = page;
                 page = order;
@@ -148,34 +148,35 @@ module.exports = function (config) {
             if (isNaN(parseInt(page))) {
                 return db.query(sql, params, connection);
             } else {
-                return db.newPromise(function (resolve, reject) {
+                return db.newPromise(function(resolve, reject) {
                     paging = ' LIMIT ' + (page * pagesize) + ',' + pagesize;
                     var pages = null;
                     var result = null;
                     var orderString = '';
-                    if(order){
-                        orderString = ' ORDER BY '+order;
+                    if (order) {
+                        orderString = ' ORDER BY ' + order;
                     }
                     db.query(sql + orderString + paging, params, connection)
-                        .then(function (res) {
+                        .then(function(res) {
                             result = res;
                             done();
-                        }).catch(function (err) {
+                        }).catch(function(err) {
                             result = err;
                             done();
                         });
                     db._query('SELECT count(*) as resultCount ' + sql.slice(sql.toLowerCase().indexOf('from')), params, connection)
-                        .then(function (c) {
+                        .then(function(c) {
                             var response = c[0] ? c[0] : { resultCount: 0 };
                             pages = {
                                 resultCount: response.resultCount,
                                 pageCount: Math.ceil(response.resultCount / pagesize)
                             };
                             done();
-                        }).catch(function (err) {
+                        }).catch(function(err) {
                             pages = err;
                             done();
                         });
+
                     function done() {
                         if (pages !== null && result !== null) {
                             if (pages instanceof Error) {
@@ -201,10 +202,10 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        getBy: tcacher.toCachingFunction(function (tableName, fieldName, value, order, page, pagesize, connection) {
+        getBy: tcacher.toCachingFunction(function(tableName, fieldName, value, order, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + fieldName + ' IN (?)';
             return db.selectPaged(sql, value, order, page, pagesize, connection);
-        },{
+        }, {
             resultProp: 1,
             listIndex: 2
         }),
@@ -217,7 +218,7 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        getOneBy: function (tableName, fieldName, value, connection) {
+        getOneBy: function(tableName, fieldName, value, connection) {
             return first(db.getBy(tableName, fieldName, value, connection));
         },
 
@@ -228,13 +229,13 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        findWhere: function (tableName, obj,order, page, pagesize, connection) {
+        findWhere: function(tableName, obj, order, page, pagesize, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
             var where = '';
             var values = [];
 
             for (var i in obj) {
-                if(where.length){
+                if (where.length) {
                     where += ' AND '
                 }
                 where += '??=?';
@@ -250,12 +251,12 @@ module.exports = function (config) {
          * @param {Number} [pagesize] the number of objects to receife in a single request. default is 20
          * @param {mysql-connection} connection to be used for this query.
          */
-        findOneWhere: function (tableName, obj, connection) {
+        findOneWhere: function(tableName, obj, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ';
             var where = '';
             var values = [];
             for (var i in obj) {
-                if(where.length){
+                if (where.length) {
                     where += ' AND '
                 }
                 where += '??=?';
@@ -265,8 +266,8 @@ module.exports = function (config) {
             return first(db.query(sql + where + limit, values, connection));
         },
 
-        where: function(tableName, where, params, order, page, pageSize, connection){
-            if(typeof params !== 'object'){
+        where: function(tableName, where, params, order, page, pageSize, connection) {
+            if (typeof params !== 'object') {
                 connection = pageSize;
                 pageSize = page;
                 page = params;
@@ -276,7 +277,7 @@ module.exports = function (config) {
             return db.selectPaged(sql, params, order, page, pageSize, connection);
         },
 
-        oneWhere: function (tableName, params, connection) {
+        oneWhere: function(tableName, params, connection) {
             var sql = 'SELECT * FROM ' + tableName + ' WHERE ' + where;
             return first(db.query(sql, params, connection));
         },
@@ -288,13 +289,13 @@ module.exports = function (config) {
          * @param {Object | Array} [objs] objects to delete from database. for single key tables a string or number is fine as key.
          * @param {mysql-connection} connection to be used for this query.
          */
-        remove: function (tableName, idKey, objs, connection) {
+        remove: function(tableName, idKey, objs, connection) {
             if (!Array.isArray(objs)) { objs = [objs]; }
             if (!Array.isArray(idKey)) { idKey = [idKey]; }
             var sql = 'DELETE FROM ' + tableName + ' WHERE ';
             if (idKey.length === 1) {
                 var key = idKey[0];
-                var ids = objs.map(function (obj) {
+                var ids = objs.map(function(obj) {
                     if (typeof obj == 'object') {
                         return obj[key];
                     } else {
@@ -309,7 +310,7 @@ module.exports = function (config) {
                 for (var i in objs) {
                     var obj = objs[i];
                     var clouseBuilder = []
-                    idKey.forEach(function (key) {
+                    idKey.forEach(function(key) {
                         clouseBuilder.push('?? = ?');
                         values.push(key);
                         values.push(obj[key]);
@@ -328,7 +329,7 @@ module.exports = function (config) {
          * @param {object} obj data to insert
          * @param {mysql-connection} connection to be used for this query.
          */
-        insert: function (tableName, obj, connection) {
+        insert: function(tableName, obj, connection) {
             var val = {};
             for (var i in obj) {
                 if (obj.hasOwnProperty(i) && (typeof obj[i] !== 'object' || obj[i] instanceof Date)) {
@@ -337,7 +338,7 @@ module.exports = function (config) {
             }
 
             var sql = 'INSERT INTO ' + tableName + ' SET ?';
-            return db.query(sql, val, connection).then(function (result) {
+            return db.query(sql, val, connection).then(function(result) {
                 obj.id = result.insertId;
                 return result.insertId;
             });
@@ -350,14 +351,14 @@ module.exports = function (config) {
          * @param {Object | Array} objs one or more objects to update. (key can not change.)
          * @param {mysql-connection} connection to be used for this query.
          */
-        save: function (tableName, primaries, objs, connection) {
-            return db.newPromise(function (resolve, reject) {
+        save: function(tableName, primaries, objs, connection) {
+            return db.newPromise(function(resolve, reject) {
                 if (!Array.isArray(objs)) { objs = [objs]; }
                 var number = objs.length;
                 var count = 0;
                 var errors = [];
-                objs.forEach(function (obj) {
-                    db.saveOne(tableName, primaries, obj, connection).then(function () {
+                objs.forEach(function(obj) {
+                    db.saveOne(tableName, primaries, obj, connection).then(function() {
                         count++;
                         if (count === number) {
                             if (errors.length) {
@@ -366,7 +367,7 @@ module.exports = function (config) {
                                 resolve();
                             }
                         }
-                    }).catch(function (err) {
+                    }).catch(function(err) {
                         count++;
                         errors.push([obj, err]);
                         if (count === number) {
@@ -385,7 +386,7 @@ module.exports = function (config) {
          * @param {Object} keys only ONE object to update. (key can not change.)
          * @param {mysql-connection} connection to be used for this query.
          */
-        saveOne: function (tableName, primaries, keys, connection) {
+        saveOne: function(tableName, primaries, keys, connection) {
             // primaries is optional parameter, default is db.defaultPrimaryName
             if (!Array.isArray(primaries) && typeof primaries !== 'string') {
                 connection = keys;
@@ -406,7 +407,7 @@ module.exports = function (config) {
             }
             sql += keybuilder.join(',');
             sql += ' WHERE ';
-            primaries.forEach(function (primary, index) {
+            primaries.forEach(function(primary, index) {
                 if (index) sql += ' AND ';
                 sql += '?? = ?';
                 params.push(primary);
@@ -420,32 +421,32 @@ module.exports = function (config) {
          * @param {object} comtroller having properties that discribe
          *                 the table accessed by the controller.
          */
-        prepareDao: function (dao) {
+        prepareDao: function(dao) {
             var tableName = dao.tableName;
 
             db.daos[tableName] = dao;
-            
-            if(typeof dao.map !=='function'){
-                dao.map = function(item){ return item; };
+
+            if (typeof dao.map !== 'function') {
+                dao.map = function(item) { return item; };
             }
-            if(typeof dao.inputMap !== 'function'){
-                dao.inputMap = function(item){return item;};
+            if (typeof dao.inputMap !== 'function') {
+                dao.inputMap = function(item) { return item; };
             }
-            dao.inputMapAll = function(items){
-                if(Array.isArray(items)){
-                    return items.map(function(item){
+            dao.inputMapAll = function(items) {
+                if (Array.isArray(items)) {
+                    return items.map(function(item) {
                         return dao.inputMap(item)
                     });
-                }else{
+                } else {
                     return dao.inputMap(items);
                 }
             }
 
-            dao.promiseMap = function(p){
-                return p.then(function(items){
-                    if(typeof items !== 'object') return items;
-                    if(Array.isArray(items)){
-                        var res =  items.map(dao.map);
+            dao.promiseMap = function(p) {
+                return p.then(function(items) {
+                    if (typeof items !== 'object') return items;
+                    if (Array.isArray(items)) {
+                        var res = items.map(dao.map);
                         res.resultCount = items.resultCount;
                         res.pageCount = items.pageCount;
                         return res;
@@ -460,19 +461,19 @@ module.exports = function (config) {
 
             dao.db = db;
 
-            dao.insert = function (obj, connection) {
+            dao.insert = function(obj, connection) {
                 return this.db.insert(tableName, dao.inputMapAll(obj), connection);
             };
 
-            dao.save = function (objs, connection) {
+            dao.save = function(objs, connection) {
                 return this.db.save(tableName, IDKeys, dao.inputMapAll(objs), connection);
             };
 
-            dao.saveOne = function (obj, connection) {
+            dao.saveOne = function(obj, connection) {
                 return this.db.saveOne(tableName, IDKeys, dao.inputMapAll(obj), connection);
             };
 
-            dao.set = function (update, objs, connection) {
+            dao.set = function(update, objs, connection) {
                 if (!Array.isArray(objs)) objs = [objs];
                 if (typeof update !== 'object') {
                     throw new Error('update have to be an object with keyValuePairs');
@@ -481,16 +482,16 @@ module.exports = function (config) {
                 var params = [];
                 if (IDKeys.length > 1) {
                     var builder = [];
-                    objs.forEach(function (obj) {
+                    objs.forEach(function(obj) {
                         builder.push('(' + IDKeys.join('=? AND ') + '=?)');
-                        IDKeys.forEach(function (key) {
+                        IDKeys.forEach(function(key) {
                             params.push(obj[key]);
                         });
                     });
                     condition = '(' + builder.join('OR') + ')';
                 } else if (IDKeys.length == 1) {
                     var IDKey = IDKeys[0];
-                    params = objs.map(function (obj) { return obj[IDKey] || obj; });
+                    params = objs.map(function(obj) { return obj[IDKey] || obj; });
                     condition = IDKey + ' IN (?)';
                 } else {
                     throw new Error('no primary key spezified');
@@ -500,36 +501,36 @@ module.exports = function (config) {
                 return this.db.query(sql, params, connection);
             };
 
-            dao.getAll = function (order, page, pageSize, connection) {
+            dao.getAll = function(order, page, pageSize, connection) {
                 var promise = this.db.selectPaged('SELECT * FROM ??', [tableName], order, page, pageSize, connection);
                 return dao.promiseMap(promise);
             };
 
-            dao.findWhere = function (obj, page, pageSize, connection) {
+            dao.findWhere = function(obj, page, pageSize, connection) {
                 var promise = this.db.findWhere(tableName, obj, page, pageSize, connection);
                 return dao.promiseMap(promise);
             };
 
-            dao.findOneWhere = function (obj, connection) {
+            dao.findOneWhere = function(obj, connection) {
                 var promise = this.db.findOneWhere(tableName, obj, connection);
                 return dao.promiseMap(promise);
             };
 
-            dao.where = function(where, params, page, pageSize, connection){
+            dao.where = function(where, params, page, pageSize, connection) {
                 var promise = this.db.where(tableName, where, params, page, pageSize, connection);
                 return dao.promiseMap(promise);
             };
 
-            dao.oneWhere = function(where, params, connection){
+            dao.oneWhere = function(where, params, connection) {
                 var promise = this.db.oneWhere(tableName, where, params, connection);
                 return dao.promiseMap(promise);
             };
 
-            dao.remove = function (obj, connection) {
+            dao.remove = function(obj, connection) {
                 return this.db.remove(tableName, IDKeys, obj, connection);
             };
 
-            dao.createTable = function (connection) {
+            dao.createTable = function(connection) {
                 var sql = 'CREATE TABLE IF NOT EXISTS ?? (';
                 var params = [tableName];
                 var fieldSQLs = [];
@@ -550,7 +551,7 @@ module.exports = function (config) {
                 return this.db.query(sql, params, connection);
             };
 
-            dao.dropTable = function (conneciton) {
+            dao.dropTable = function(conneciton) {
                 return this.db.query('DROP TABLE IF EXISTS ??', [tableName], conneciton);
             };
 
@@ -561,29 +562,29 @@ module.exports = function (config) {
              * 
              * @param {String} word
              */
-            dao.search = function(word, filter, order, page, pagesize, connection){
+            dao.search = function(word, filter, order, page, pagesize, connection) {
                 var sql = 'SELECT * FROM ' + tableName;
                 var where = '';
                 var params = [];
-                if(word){
-                    var escaped = '%'+escape(word)+'%';
-                    where += '('+fieldNames.join(' LIKE ? OR ')+' LIKE ?) ';
-                    times(fieldNames.length, function(){
+                if (word) {
+                    var escaped = '%' + escape(word) + '%';
+                    where += '(' + fieldNames.join(' LIKE ? OR ') + ' LIKE ?) ';
+                    times(fieldNames.length, function() {
                         params.push(escaped);
                     });
                 }
-                if(filter!==undefined){
-                    if(typeof filter==='object' && !isConnection(filter)){
-                        for(var propName in filter){
-                            if(fieldNames.indexOf(propName)===-1){
-                                return Promise.reject(new Error('invalid property '+propName))
-                                //continue;
+                if (filter !== undefined) {
+                    if (typeof filter === 'object' && !isConnection(filter)) {
+                        for (var propName in filter) {
+                            if (fieldNames.indexOf(propName) === -1) {
+                                return Promise.reject(new Error('invalid property ' + propName))
+                                    //continue;
                             }
-                            if(where.length){
+                            if (where.length) {
                                 where += ' AND ';
                             }
                             var value = filter[propName];
-                            if(typeof value === 'string') {
+                            if (typeof value === 'string') {
                                 var indicator = value[0];
                                 if (indicator === '>') {
                                     where += propName + ' > ? ';
@@ -594,9 +595,9 @@ module.exports = function (config) {
                                 } else if (indicator === '!') {
                                     where += propName + ' <> ? ';
                                     params.push(value.substr(1));
-                                } else if(value.indexOf('<>')>0){
+                                } else if (value.indexOf('<>') > 0) {
                                     var values = value.split('<>');
-                                    values.sort(function (a, b) {
+                                    values.sort(function(a, b) {
                                         if (a < b) {
                                             return -1;
                                         } else {
@@ -605,51 +606,52 @@ module.exports = function (config) {
                                     });
                                     where += propName + '>=? AND ' + propName + '<=? '
                                     params.push(values[0], values[1]);
-                                }else{
-                                    where += ' '+ propName + ' = ? ';
+                                } else {
+                                    where += ' ' + propName + ' = ? ';
                                     params.push(value);
                                 }
-                            } else if(Array.isArray(value)){
-                                where+='?? IN (?)';
+                            } else if (Array.isArray(value)) {
+                                where += '?? IN (?)';
                                 params.push(propName, value);
-                            }else{
-                                where+='?? = ?';
+                            } else {
+                                where += '?? = ?';
                                 params.push(propName, value);
                             }
                         }
-                        if(where.length){
-                            sql+= ' WHERE ' + where;
+                        if (where.length) {
+                            sql += ' WHERE ' + where;
                         }
-                    }else{
+                    } else {
                         connection = pageSize;
                         pagesize = page;
                         page = order;
                         order = filter;
                     }
                 }
-                return dao.promiseMap(this.db.selectPaged(sql,params,order,page,pagesize,connection));
+                return dao.promiseMap(this.db.selectPaged(sql, params, order, page, pagesize, connection));
             };
 
             var fieldNames = Object.keys(dao.fields);
-            fieldNames.forEach(function (name) {
+            fieldNames.forEach(function(name) {
                 var definition = dao.fields[name];
                 var addName = name[0].toUpperCase() + name.slice(1).toLowerCase();
 
-                dao['getBy' + addName] = function (value, page, pageSize, connection) {
+                dao['getBy' + addName] = function(value, page, pageSize, connection) {
                     var promise = this.db.getBy(tableName, name, value, page, pageSize, connection);
                     return dao.promiseMap(promise);
                 };
 
-                dao['getOneBy' + addName] = function (value, connection) {
+                dao['getOneBy' + addName] = function(value, connection) {
                     return first(this['getBy' + addName](value, connection));
                     //return dao.promiseMap(promise);
                 };
 
-                dao['removeBy' + addName] = function (value, connection) {
+                dao['removeBy' + addName] = function(value, connection) {
                     return this.db.remove(tableName, name, value, connection);
                 };
-
-                prepareFetchMethod(db, dao, tableName, name, definition);
+                if (definition.mapTo) {
+                    prepareFetchMethod(db, dao, tableName, name, definition);
+                }
 
                 if (definition.primary) { IDKeys.push(name); }
             });
@@ -675,12 +677,12 @@ module.exports = function (config) {
     /**
      * makes sure, that poolconnections get released when they got committed or rollback
      */
-    var extendTransactionConnection = function (connection) {
+    var extendTransactionConnection = function(connection) {
         if (connection.rollback && !connection._OrgRollback && connection.commit && !connection._OrgCommit && connection.release) {
             connection._OrgRollback = connection.rollback;
-            connection.rollback = function (callback) {
-                return db.newPromise(function (resolve, reject) {
-                    connection._OrgRollback(function (err) {
+            connection.rollback = function(callback) {
+                return db.newPromise(function(resolve, reject) {
+                    connection._OrgRollback(function(err) {
                         if (err) { reject(err); return; }
                         connection.release();
                         resolve(null);
@@ -689,9 +691,9 @@ module.exports = function (config) {
             };
 
             connection._OrgCommit = connection.commit;
-            connection.commit = function (callback) {
-                return db.newPromise(function (resolve, reject) {
-                    connection._OrgCommit(function (err) {
+            connection.commit = function(callback) {
+                return db.newPromise(function(resolve, reject) {
+                    connection._OrgCommit(function(err) {
                         if (err) { reject(err); return; }
                         connection.release();
                         resolve(null);
@@ -699,10 +701,10 @@ module.exports = function (config) {
                 });
             };
 
-            connection.setAutocommit = function (on) {
+            connection.setAutocommit = function(on) {
                 on = on ? 1 : 0;
-                return db.newPromise(function (resolve, reject) {
-                    connection.query('SET autocommit = ?', [on], function (err) {
+                return db.newPromise(function(resolve, reject) {
+                    connection.query('SET autocommit = ?', [on], function(err) {
                         if (err) {
                             reject(err);
                             return;
@@ -717,13 +719,13 @@ module.exports = function (config) {
     return db;
 }
 
-var times = function(repitations,cb){
-    for(var i=0; i<repitations;i++){
+var times = function(repitations, cb) {
+    for (var i = 0; i < repitations; i++) {
         cb(i);
     }
 };
 
-var escape = function(value){
-    var escaped = mysql.format('?',[value]);
-    return escaped.substr(1,escaped.length-2);
+var escape = function(value) {
+    var escaped = mysql.format('?', [value]);
+    return escaped.substr(1, escaped.length - 2);
 };
