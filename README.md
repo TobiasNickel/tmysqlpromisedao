@@ -1,9 +1,9 @@
 # tMysqlProiseDao
 
-unopinioned, high quality, future-ready mysql controller for more convenience, code reuse,
+Unopinioned, high quality, future-ready mysql controller for more convenience, code reuse,
 clean APIs, flexibility, reasonable conventions, maintainability, helping you to implement
-an architecture, that will support you and your team. That uses native Pomises 
-and is ready for async await. It supports with transactions and even distributed 
+an architecture, that will support you and your team and finally improve your security. That uses native Pomises 
+and is ready for async/await. It supports with transactions and even distributed 
 transactions with other resources. It helping you implementing best practice and follow stable conventions.
 It helps you with pageing and you keep full flexibility.
 
@@ -11,9 +11,7 @@ It helps you with pageing and you keep full flexibility.
 ## Usage
 
 ```javascript
-//require the module
 var tMysqlDao = require('tmysqlpromisedao');
-// create a database object.
 var db = tMysqlDao({
     connectionLimit: 5,
     user: 'root',
@@ -21,24 +19,24 @@ var db = tMysqlDao({
     database: 'dbname',
     registry: {} // optional
 });
-// define a controller Template
+// define a dao-description
 var userDao = {
-    tableName:'user',
-    fields:{ // fields to define the schema.
-        id: {type:'int AUTO_INCREMENT', primary:true},
-        name: {type:'varchar(255)'},
-        password: {type:'char(32)'},
-        registered: {type:'Boolean'},
-        mail: {type:'varchar(255)'},
-        avatar: {type:'int', mapTo: {tableName:'image', foreignKey:'id'}} // avatar is an ID mapping to a image-table
+    tableName: 'user',
+    fields: { // fields to define the schema.
+        id: { type: 'int AUTO_INCREMENT', primary: true },
+        name: { type: 'varchar(255)' },
+        password: { type: 'char(32)' },
+        registered: { type: 'Boolean' },
+        mail: { type: 'varchar(255)' },
+        avatar: { type: 'int', mapTo: { tableName: 'image', foreignKey: 'id' } } // avatar is an ID mapping to a image-table
     },
     has: {
-        profilePicures: {tableName: 'image', foreignKey: 'uploader', localField: 'id', multiple: true }
+        profilePicures: { tableName: 'image', foreignKey: 'uploader', localField: 'id', multiple: true }
         //fetch neasted images, that belong to users
         // returns the images, and extend the provided users.
     },
     conditionals: {
-        new: {condition:'TO_DAYS(registered) > (TO_DAYS(NOW())-10)', multiple: true },
+        new: { condition: 'TO_DAYS(registered) > (TO_DAYS(NOW())-10)', multiple: true },
         // condition just the where-clause of the sql to fetch users.
     },
     queries: {
@@ -50,16 +48,16 @@ var userDao = {
 db.prepareDao(userDao);
 
 
-async function application(){
-    await userDao.createTable();// create table if not exists
+async function application() {
+    await userDao.createTable(); // create table if not exists
     //insert some objects
-    await userDao.insert({name:'Dave',password:'111111',mail:'dave@example.com',register: Date.now()});
-    await userDao.insert({name:'Richard',password:'111111',mail:'richard@example.com'register: Date.now()});
-    await userDao.insert({name:'Tobias',password:'111111',mail:'tobias@example.com'register: Date.now()});
-    await userDao.insert({name:'Michael',password:'111111',mail:'michael@example.com'register: Date.now()});
+    await userDao.insert({ name: 'Dave', password: '111111', mail: 'dave@example.com', register: Date.now() });
+    await userDao.insert({ name: 'Richard', password: '111111', mail: 'richard@example.com', register: Date.now() });
+    await userDao.insert({ name: 'Tobias', password: '111111', mail: 'tobias@example.com', register: Date.now() });
+    await userDao.insert({ name: 'Michael', password: '111111', mail: 'michael@example.com', register: Date.now() });
 
     //find one by Mail
-    var tobias = await userDao.getOneByMail('tobias@example.com');
+    const tobias = await userDao.getOneByMail('tobias@example.com');
     console.log(tobias);
 }
 
@@ -78,7 +76,7 @@ The functions to request and provide the response in a node-style-callback (err,
 ```javascript
 
 userDao = {
-  // the properties defined in the template don't change
+    // the properties defined in the template don't change
     tableName:'user',
     fields:{
     id:{primary:true},
