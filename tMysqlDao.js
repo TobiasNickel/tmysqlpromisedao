@@ -1,6 +1,5 @@
 var mysql = require('mysql');
 var tcacher = require('tcacher');
-var newPromise = require('./lib/newPromise');
 var prepareFetchMethod = require('./lib/prepareFetchMethod');
 var prepareQueryMethod = require('./lib/prepareQueryMethod');
 var isConnection = require('./lib/isConnection');
@@ -36,7 +35,7 @@ module.exports = function(config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         _query: function(sql, params, connection) {
-            return db.newPromise(function(resolve, reject) {
+            return new Promise(function(resolve, reject) {
                 if (isConnection(params)) {
                     connection = params;
                     params = [];
@@ -61,11 +60,6 @@ module.exports = function(config) {
         },
 
         /**
-         * promise factory, that can be replaced, to use different promise-libraries.
-         */
-        newPromise: newPromise || config.newPromise,
-
-        /**
          * When defining your database schema, good developer follow some naming convention.
          * One decision to a namingconvention is having consistent names for standard Id keys.
          */
@@ -75,7 +69,7 @@ module.exports = function(config) {
          * get a connectio where the transaction is started.
          */
         beginTransaction: function() {
-            return db.newPromise(function(resolve, reject) {
+            return new Promise(function(resolve, reject) {
                 db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
                     connection.beginTransaction(function(err) {
@@ -86,7 +80,7 @@ module.exports = function(config) {
             });
         },
         beginReadOnlyTransaction: function() {
-            return db.newPromise(function(resolve, reject) {
+            return new Promise(function(resolve, reject) {
                 db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
                     connection.query('START TRANSACTION READ ONLY;', function(err) {
@@ -97,7 +91,7 @@ module.exports = function(config) {
             });
         },
         beginReadWriteTransaction: function() {
-            return db.newPromise(function(resolve, reject) {
+            return new Promise(function(resolve, reject) {
                 db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
                     connection.query('START TRANSACTION READ WRITE;', function(err) {
@@ -108,7 +102,7 @@ module.exports = function(config) {
             });
         },
         beginTransactionWithConsistentSnapshot: function() {
-            return db.newPromise(function(resolve, reject) {
+            return new Promise(function(resolve, reject) {
                 db.pool.getConnection(function(err, connection) {
                     if (err) { reject(err); return; }
                     connection.query('START TRANSACTION WITH CONSISTENT SNAPSHOT;', function(err) {
@@ -148,7 +142,7 @@ module.exports = function(config) {
             if (isNaN(parseInt(page))) {
                 return db.query(sql, params, connection);
             } else {
-                return db.newPromise(function(resolve, reject) {
+                return new Promise(function(resolve, reject) {
                     paging = ' LIMIT ' + (page * pagesize) + ',' + pagesize;
                     var pages = null;
                     var result = null;
@@ -352,7 +346,7 @@ module.exports = function(config) {
          * @param {mysql-connection} connection to be used for this query.
          */
         save: function(tableName, primaries, objs, connection) {
-            return db.newPromise(function(resolve, reject) {
+            return new Promise(function(resolve, reject) {
                 if (!Array.isArray(objs)) { objs = [objs]; }
                 var number = objs.length;
                 var count = 0;
@@ -681,7 +675,7 @@ module.exports = function(config) {
         if (connection.rollback && !connection._OrgRollback && connection.commit && !connection._OrgCommit && connection.release) {
             connection._OrgRollback = connection.rollback;
             connection.rollback = function(callback) {
-                return db.newPromise(function(resolve, reject) {
+                return new Promise(function(resolve, reject) {
                     connection._OrgRollback(function(err) {
                         if (err) { reject(err); return; }
                         connection.release();
@@ -692,7 +686,7 @@ module.exports = function(config) {
 
             connection._OrgCommit = connection.commit;
             connection.commit = function(callback) {
-                return db.newPromise(function(resolve, reject) {
+                return new Promise(function(resolve, reject) {
                     connection._OrgCommit(function(err) {
                         if (err) { reject(err); return; }
                         connection.release();
@@ -703,14 +697,14 @@ module.exports = function(config) {
 
             connection.setAutocommit = function(on) {
                 on = on ? 1 : 0;
-                return db.newPromise(function(resolve, reject) {
+                return new Promise(function(resolve, reject) {
                     connection.query('SET autocommit = ?', [on], function(err) {
                         if (err) {
                             reject(err);
                             return;
                         }
                         resolve();
-                    })
+                    });
                 });
             };
         }

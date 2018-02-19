@@ -269,50 +269,17 @@ witch will then take a free connection from the pool.
 The base of the pageing is db.selectPaged(). witch is the query method with two additional optional parameter. page and pageSize before the optional connection. It will execute the query using db.query with a sqlString extended by a limit clouse. It will also execute the query with counting the results, an object with the result and the counts.
 
 ```javascript
-userDao.getAll(0,10)
-    .then(function(res){
-        console.log(res)// [the 10 first userobjects]
-        console.log(res.resultCount) // 199
-        console.log(res.pageCount) // 20
-    });
+userDao.getAll(0, 10).then(function(res){
+    console.log(res)// [the 10 first userobjects]
+    console.log(res.resultCount) // 199
+    console.log(res.pageCount) // 20
+});
 ```
 
 ## Registry
 In the initial configuration you have already seen the optional parameter *registry*. This is an optional feature, that will allow you to mashup data sources. By that I mean, that you can use different databases, database types, storrage systems/services, APIs together. 
 
 You might store your users in relational database Mysql, but posts in Mongo, and you use a location service (i.e.: [OSM](https://www.openstreetmap.org/))to map the users adresses to a map. And in the same way, you *fetch* data from related tables, you could fetch data and merge it from any other resource.
-
-## Promise
-
-By default tmysqlpromisedao is using native promises in nodejs. If you want to use an other promise library,
-you can exchange the promiseFactory on the db. Following an example with bluebird.
-```javascript
-var promise = require('bluebird');
-var connectonConfig = require('./mysqlConfig.json');
-var db = module.exports = require('tmysqlcontroller')(connectionConfig);
-db.newPromise = function(handler){
-    return new promise(handler);
-};
-```
-And next an example with Q. For demonstration it uses Q.defer(). 
-```javascript
-var Q = require('q');
-var connectonConfig = require('./mysqlConfig.json');
-var db = module.exports = require('tmysqlcontroller')(connectionConfig);
-db.newPromise = function(handler){
-    var deferred = Q.defer();
-    function resolve (res){deferred.resolve(res);}
-    function reject (err){deferred.reject(err);}
-    process.nextTick(function(){
-        try{
-            handler(resolve, reject);
-        }catch(err){
-            deferred.reject(err);
-        }
-    });
-    return deferred.promise;
-};
-```
 
 
 # Function Reference
